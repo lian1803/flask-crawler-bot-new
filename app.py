@@ -4,8 +4,19 @@ import json
 import os
 from datetime import datetime
 import re
+from openai import OpenAI
 
 app = Flask(__name__)
+
+# --- OpenAI 클라이언트 설정 ---
+# Render.com의 환경 변수에서 API 키를 가져옵니다.
+api_key = os.environ.get('OPENAI_API_KEY')
+if not api_key:
+    print("경고: OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
+    # 로컬 테스트용 임시 키 (실제 배포 시에는 비워두거나 삭제)
+    # api_key = "YOUR_FALLBACK_API_KEY_HERE" 
+
+client = OpenAI(api_key=api_key)
 
 # 데이터베이스 초기화
 def init_db():
@@ -74,7 +85,7 @@ def search_database(user_message):
         results = cursor.fetchall()
         
         if results:
-            response = "최근 공지사항:\n"
+            response = "최근 공지사항 5개입니다:\n\n"
             for title, created_at in results:
                 response += f"• {title} ({created_at})\n"
             conn.close()
@@ -83,22 +94,66 @@ def search_database(user_message):
     conn.close()
     return None
 
-# 2단계: AI 분석 (간단한 키워드 매칭)
-def analyze_with_ai(user_message, crawled_data):
-    # 식단 관련 질문에 대한 일반적인 답변
-    if '식단' in user_message or '메뉴' in user_message:
-        return "식단 정보는 매일 업데이트됩니다. 구체적인 날짜를 말씀해주시면 더 정확한 정보를 제공해드릴 수 있습니다."
+# DB에서 모든 데이터 가져오기 (AI에게 컨텍스트로 제공)
+def get_all_data_for_ai():
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
     
-    # 공지사항 관련 질문
-    if '공지' in user_message or '알림' in user_message:
-        return "공지사항은 학교 홈페이지에서 실시간으로 업데이트됩니다. 최신 정보를 확인해보세요."
+    # 최근 식단 10개
+    cursor.execute('SELECT date, menu FROM meals ORDER BY date DESC LIMIT 10')
+    meals = cursor.fetchall()
     
-    # 학교 관련 일반 질문
-    school_keywords = ['학교', '등교', '하교', '수업', '시험']
-    if any(keyword in user_message for keyword in school_keywords):
-        return "학교 관련 문의사항은 학교로 직접 연락하시는 것이 가장 정확합니다."
+    # 최근 공지사항 10개
+    cursor.execute('SELECT title, created_at, content FROM notices ORDER BY created_at DESC LIMIT 10')
+    notices = cursor.fetchall()
     
-    return None
+    conn.close()
+    
+    context = "### 파주와석초등학교 정보 ###\n\n"
+    context += "--- 최신 식단 (10개) ---\n"
+    for date, menu in meals:
+        context += f"날짜: {date}\n메뉴: {menu}\n\n"
+        
+    context += "\n--- 최신 공지사항 (10개) ---\n"
+    for title, created_at, content in notices:
+        context += f"날짜: {created_at}\n제목: {title}\n내용: {content[:100]}...\n\n" # 내용은 100자만
+        
+    return context
+
+# 2단계: AI 분석 (비용 최적화)
+def analyze_with_ai(user_message):
+    try:
+        # 1. AI에게 전달할 전체 데이터 컨텍스트 가져오기
+        data_context = get_all_data_for_ai()
+        
+        # 2. AI에게 역할과 지침 부여 (System Prompt)
+        system_prompt = f"""
+        당신은 파주와석초등학교의 친절한 안내 챗봇입니다.
+        아래에 제공되는 실제 학교 데이터를 기반으로만 답변해야 합니다.
+        데이터에 없는 내용은 절대로 지어내지 말고, "해당 정보는 아직 없어요. 학교에 직접 문의해주세요." 라고 솔직하게 답변하세요.
+        답변은 항상 한국어로, 완전한 문장으로 부드럽게 만들어주세요.
+
+        --- 제공된 데이터 ---
+        {data_context}
+        --------------------
+        """
+        
+        # 3. OpenAI API 호출
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.7, # 너무 딱딱하지 않게
+        )
+        
+        answer = completion.choices[0].message.content
+        return answer
+
+    except Exception as e:
+        print(f"OpenAI API 오류: {str(e)}")
+        return None
 
 # 카카오톡 응답 생성
 def create_kakao_response(message):
@@ -130,7 +185,7 @@ def webhook():
             return jsonify(create_kakao_response(direct_answer))
         
         # 2단계: AI 분석
-        ai_answer = analyze_with_ai(user_message, None)
+        ai_answer = analyze_with_ai(user_message)
         if ai_answer:
             print(f"2단계 답변: {ai_answer}")
             return jsonify(create_kakao_response(ai_answer))
@@ -149,5 +204,5 @@ def home():
     return "파주와석초등학교 챗봇 서버가 실행 중입니다!"
 
 if __name__ == '__main__':
-    # init_db() # data_loader.py에서 처리하므로 주석 처리
+    # init_db()는 data_loader.py에서 처리
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
