@@ -149,5 +149,5 @@ def home():
     return "파주와석초등학교 챗봇 서버가 실행 중입니다!"
 
 if __name__ == '__main__':
-    init_db()
+    # init_db() # data_loader.py에서 처리하므로 주석 처리
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 

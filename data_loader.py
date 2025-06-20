@@ -2,6 +2,39 @@ import sqlite3
 import json
 import os
 
+def init_db():
+    """데이터베이스와 테이블을 초기화"""
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    
+    # 공지사항 테이블
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS notices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT,
+            url TEXT,
+            created_at TEXT,
+            tags TEXT,
+            category TEXT
+        )
+    ''')
+    
+    # 식단 테이블
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS meals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL UNIQUE,
+            meal_type TEXT,
+            menu TEXT,
+            image_url TEXT
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("데이터베이스 테이블 초기화 완료.")
+
 def load_meals_to_db():
     """식단 데이터를 데이터베이스에 로드"""
     conn = sqlite3.connect('school_data.db')
@@ -17,7 +50,7 @@ def load_meals_to_db():
             
         for meal in meals_data:
             cursor.execute('''
-                INSERT INTO meals (date, meal_type, menu, image_url)
+                INSERT OR REPLACE INTO meals (date, meal_type, menu, image_url)
                 VALUES (?, ?, ?, ?)
             ''', (meal['date'], meal['meal_type'], meal['menu'], meal['image_url']))
         
@@ -29,14 +62,11 @@ def load_meals_to_db():
             meals_data = json.load(f)
             
         for meal in meals_data:
-            # 중복 체크
-            cursor.execute('SELECT id FROM meals WHERE date = ? AND meal_type = ?', 
-                         (meal['date'], meal['meal_type']))
-            if not cursor.fetchone():
-                cursor.execute('''
-                    INSERT INTO meals (date, meal_type, menu, image_url)
-                    VALUES (?, ?, ?, ?)
-                ''', (meal['date'], meal['meal_type'], meal['menu'], meal['image_url']))
+            # 중복 체크 후 삽입 또는 교체
+            cursor.execute('''
+                INSERT OR REPLACE INTO meals (date, meal_type, menu, image_url)
+                VALUES (?, ?, ?, ?)
+            ''', (meal['date'], meal['meal_type'], meal['menu'], meal['image_url']))
         
         print(f"추가 식단 데이터 로드 완료")
     
@@ -58,7 +88,7 @@ def load_notices_to_db():
             
         for notice in notices_data:
             cursor.execute('''
-                INSERT INTO notices (title, content, url, created_at, tags, category)
+                INSERT OR REPLACE INTO notices (title, content, url, created_at, tags, category)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (notice['title'], notice['content'], notice['url'], 
                  notice['created_at'], notice['tags'], notice['category']))
@@ -69,6 +99,7 @@ def load_notices_to_db():
 
 def main():
     print("데이터베이스 로딩 시작...")
+    init_db() # 테이블 먼저 생성
     load_meals_to_db()
     load_notices_to_db()
     print("데이터베이스 로딩 완료!")
