@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import sqlite3
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 from openai import OpenAI
 
@@ -50,49 +50,51 @@ def init_db():
     conn.commit()
     conn.close()
 
-# 1단계: 직접 데이터 검색
-def search_database(user_message):
+def get_target_date(text):
+    """사용자 메시지에서 날짜를 추출합니다."""
+    today = datetime.now()
+    if "오늘" in text:
+        return today.strftime("%Y-%m-%d")
+    if "내일" in text:
+        return (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    if "어제" in text:
+        return (today - timedelta(days=1)).strftime("%Y-%m-%d")
+    if "모레" in text:
+        return (today + timedelta(days=2)).strftime("%Y-%m-%d")
+    
+    # "5월 20일", "5/20" 같은 패턴 찾기
+    match = re.search(r'(\d{1,2})[월/\s](\d{1,2})일?', text)
+    if match:
+        month, day = map(int, match.groups())
+        # 올해 날짜로 가정
+        return today.replace(month=month, day=day).strftime("%Y-%m-%d")
+        
+    return None
+
+def get_meal_info(date):
+    """특정 날짜의 식단 정보를 DB에서 가져옵니다."""
     conn = sqlite3.connect('school_data.db')
     cursor = conn.cursor()
-    
-    # 식단 관련 질문
-    meal_keywords = ['점심', '메뉴', '식단', '밥', '급식', '오늘', '내일', '어제']
-    if any(keyword in user_message for keyword in meal_keywords):
-        # 날짜 추출
-        today = datetime.now().strftime('%Y-%m-%d')
-        
-        if '오늘' in user_message:
-            date = today
-        elif '내일' in user_message:
-            # 내일 날짜 계산
-            from datetime import timedelta
-            tomorrow = datetime.now() + timedelta(days=1)
-            date = tomorrow.strftime('%Y-%m-%d')
-        else:
-            date = today
-            
-        cursor.execute('SELECT menu FROM meals WHERE date = ? AND meal_type = "중식"', (date,))
-        result = cursor.fetchone()
-        
-        if result and result[0]:
-            conn.close()
-            return f"{date} 중식 메뉴:\n{result[0]}"
-    
-    # 공지사항 관련 질문
-    notice_keywords = ['공지', '알림', '안내', '새소식', '뉴스']
-    if any(keyword in user_message for keyword in notice_keywords):
-        cursor.execute('SELECT title, created_at FROM notices ORDER BY created_at DESC LIMIT 5')
-        results = cursor.fetchall()
-        
-        if results:
-            response = "최근 공지사항 5개입니다:\n\n"
-            for title, created_at in results:
-                response += f"• {title} ({created_at})\n"
-            conn.close()
-            return response
-    
+    cursor.execute('SELECT menu FROM meals WHERE date = ? AND meal_type = "중식"', (date,))
+    result = cursor.fetchone()
     conn.close()
-    return None
+    if result and result[0]:
+        return f"{date} 중식 메뉴입니다:\n\n{result[0]}"
+    return f"{date}에는 식단 정보가 없습니다."
+
+def get_latest_notices():
+    """최신 공지사항 5개를 DB에서 가져옵니다."""
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT title, created_at FROM notices ORDER BY created_at DESC LIMIT 5')
+    results = cursor.fetchall()
+    conn.close()
+    if results:
+        response = "최근 공지사항 5개입니다:\n\n"
+        for title, created_at in results:
+            response += f"• {title} ({created_at})\n"
+        return response
+    return "현재 등록된 공지사항이 없습니다."
 
 # DB에서 모든 데이터 가져오기 (AI에게 컨텍스트로 제공)
 def get_all_data_for_ai():
@@ -170,38 +172,53 @@ def create_kakao_response(message):
         }
     }
 
+# --- 메인 핸들러 ---
+def handle_request(user_message):
+    """사용자 요청을 단계별로 처리합니다."""
+    
+    # 1단계: 식단 관련 질문 처리 (날짜 인식)
+    meal_keywords = ['급식', '식단', '메뉴', '밥', '점심']
+    if any(keyword in user_message for keyword in meal_keywords):
+        target_date = get_target_date(user_message)
+        if target_date:
+            print(f"INFO: 식단 질문으로 판단, 날짜: {target_date}")
+            return get_meal_info(target_date)
+
+    # 2단계: 공지사항 관련 질문 처리
+    notice_keywords = ['공지', '알림', '안내', '새소식']
+    if any(keyword in user_message for keyword in notice_keywords):
+        print("INFO: 공지사항 질문으로 판단")
+        return get_latest_notices()
+        
+    # 3단계: 1, 2단계에 해당하지 않으면 AI에게 질문
+    print("INFO: 일반 질문으로 판단, AI 호출")
+    ai_answer = analyze_with_ai(user_message)
+    if ai_answer:
+        return ai_answer
+        
+    # 4단계: AI도 실패하면 최종 폴백 메시지
+    return "죄송합니다. 요청을 이해하지 못했습니다. 학교로 직접 문의해주세요."
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
         data = request.get_json()
         user_message = data['userRequest']['utterance']
         
-        print(f"사용자 메시지: {user_message}")
+        # 새로운 핸들러 호출
+        response_text = handle_request(user_message)
         
-        # 1단계: 직접 검색
-        direct_answer = search_database(user_message)
-        if direct_answer:
-            print(f"1단계 답변: {direct_answer}")
-            return jsonify(create_kakao_response(direct_answer))
-        
-        # 2단계: AI 분석
-        ai_answer = analyze_with_ai(user_message)
-        if ai_answer:
-            print(f"2단계 답변: {ai_answer}")
-            return jsonify(create_kakao_response(ai_answer))
-        
-        # 3단계: 학교 문의 안내
-        fallback_message = "죄송합니다. 해당 정보를 찾을 수 없습니다. 학교쪽으로 문의주세요."
-        print(f"3단계 답변: {fallback_message}")
-        return jsonify(create_kakao_response(fallback_message))
+        print(f"사용자: '{user_message}' / 챗봇: '{response_text[:30]}...'")
+        return jsonify(create_kakao_response(response_text))
         
     except Exception as e:
         print(f"오류 발생: {str(e)}")
-        return jsonify(create_kakao_response("시스템 오류가 발생했습니다. 잠시 후 다시 시도해주세요."))
+        # 사용자에게는 간단한 오류 메시지 표시
+        return jsonify(create_kakao_response("시스템에 오류가 발생하여 요청을 처리할 수 없습니다."))
 
 @app.route('/')
 def home():
-    return "파주와석초등학교 챗봇 서버가 실행 중입니다!"
+    return "파주와석초등학교 챗봇 서버 v2.0 (AI-Powered)"
 
 if __name__ == '__main__':
     # init_db()는 data_loader.py에서 처리
