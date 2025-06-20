@@ -101,22 +101,22 @@ def get_all_data_for_ai():
     conn = sqlite3.connect('school_data.db')
     cursor = conn.cursor()
     
-    # 최근 식단 10개
-    cursor.execute('SELECT date, menu FROM meals ORDER BY date DESC LIMIT 10')
+    # 최근 식단 5개
+    cursor.execute('SELECT date, menu FROM meals ORDER BY date DESC LIMIT 5')
     meals = cursor.fetchall()
     
-    # 최근 공지사항 10개
-    cursor.execute('SELECT title, created_at, content FROM notices ORDER BY created_at DESC LIMIT 10')
+    # 최근 공지사항 5개
+    cursor.execute('SELECT title, created_at, content FROM notices ORDER BY created_at DESC LIMIT 5')
     notices = cursor.fetchall()
     
     conn.close()
     
     context = "### 파주와석초등학교 정보 ###\n\n"
-    context += "--- 최신 식단 (10개) ---\n"
+    context += "--- 최신 식단 (5개) ---\n"
     for date, menu in meals:
         context += f"날짜: {date}\n메뉴: {menu}\n\n"
         
-    context += "\n--- 최신 공지사항 (10개) ---\n"
+    context += "\n--- 최신 공지사항 (5개) ---\n"
     for title, created_at, content in notices:
         context += f"날짜: {created_at}\n제목: {title}\n내용: {content[:100]}...\n\n" # 내용은 100자만
         
