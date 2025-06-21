@@ -1,0 +1,17 @@
+name: Ping Server
+
+on:
+  schedule:
+    # 15분마다 실행 (UTC 기준)
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # 수동 실행도 가능
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Flask Server
+        run: |
+          echo "Pinging server at $(date)"
+          curl -s -o /dev/null -w "Status: %{http_code}\n" https://flask-crawler-bot-new.onrender.com
+          echo "Ping completed at $(date)" 
