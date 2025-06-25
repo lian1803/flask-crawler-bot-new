@@ -4,6 +4,7 @@ import json
 import os
 from datetime import datetime, timedelta
 import re
+from openai import OpenAI
 
 app = Flask(__name__)
 
@@ -85,26 +86,82 @@ def get_latest_notices():
         return response
     return "현재 등록된 공지사항이 없습니다."
 
-# --- 메인 핸들러 (AI 제거 버전) ---
+# --- OpenAI 클라이언트 설정 ---
+api_key = os.environ.get('OPENAI_API_KEY')
+if not api_key:
+    print("경고: OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
+client = OpenAI(api_key=api_key)
+
+def get_all_data_for_ai():
+    """DB에서 모든 데이터 가져오기 (AI에게 컨텍스트로 제공)"""
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    # 최근 식단 5개
+    cursor.execute('SELECT date, menu FROM meals ORDER BY date DESC LIMIT 5')
+    meals = cursor.fetchall()
+    # 최근 공지사항 5개
+    cursor.execute('SELECT title, created_at, content FROM notices ORDER BY created_at DESC LIMIT 5')
+    notices = cursor.fetchall()
+    conn.close()
+    context = "### 파주와석초등학교 정보 ###\n\n"
+    context += "--- 최신 식단 (5개) ---\n"
+    for date, menu in meals:
+        context += f"날짜: {date}\n메뉴: {menu}\n\n"
+    context += "\n--- 최신 공지사항 (5개) ---\n"
+    for title, created_at, content in notices:
+        context += f"날짜: {created_at}\n제목: {title}\n내용: {content[:100]}...\n\n" # 내용은 100자만
+    return context
+
+def analyze_with_ai(user_message):
+    """2단계: AI 분석 (비용 최적화)"""
+    try:
+        data_context = get_all_data_for_ai()
+        system_prompt = f"""
+        당신은 파주와석초등학교의 친절한 안내 챗봇입니다.
+        아래에 제공되는 실제 학교 데이터를 기반으로만 답변해야 합니다.
+        데이터에 없는 내용은 절대로 지어내지 말고, \"해당 정보는 아직 없어요. 학교에 직접 문의해주세요.\" 라고 솔직하게 답변하세요.
+        답변은 항상 한국어로, 완전한 문장으로 부드럽게 만들어주세요.
+        --- 제공된 데이터 ---
+        {data_context}
+        --------------------
+        """
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.7,
+        )
+        answer = completion.choices[0].message.content
+        return answer
+    except Exception as e:
+        print(f"OpenAI API 오류: {str(e)}")
+        return None
+
+# --- 메인 핸들러 (AI 복원) ---
 def handle_request(user_message):
-    """사용자 요청을 단계별로 처리합니다. (AI 제거 버전)"""
-    
-    # 1단계: 식단 관련 질문 처리 (날짜 인식)
+    """사용자 요청을 단계별로 처리합니다. (AI 복원)"""
     meal_keywords = ['급식', '식단', '메뉴', '밥', '점심']
     if any(keyword in user_message for keyword in meal_keywords):
         target_date = get_target_date(user_message)
         if target_date:
             print(f"INFO: 식단 질문으로 판단, 날짜: {target_date}")
-            return get_meal_info(target_date)
-
-    # 2단계: 공지사항 관련 질문 처리
+            meal_answer = get_meal_info(target_date)
+            if '없습니다' not in meal_answer:
+                return meal_answer
     notice_keywords = ['공지', '알림', '안내', '새소식']
     if any(keyword in user_message for keyword in notice_keywords):
         print("INFO: 공지사항 질문으로 판단")
-        return get_latest_notices()
-        
-    # 3단계: 1,2단계에 해당하지 않으면 기본 답변 (AI 제거)
-    print("INFO: 일반 질문으로 판단, 기본 답변")
+        notice_answer = get_latest_notices()
+        if '없습니다' not in notice_answer:
+            return notice_answer
+    # 2단계: AI에게 넘기기
+    print("INFO: AI에게 질문 전달")
+    ai_answer = analyze_with_ai(user_message)
+    if ai_answer:
+        return ai_answer
+    # 3단계: AI도 답변 못하면 최종 폴백
     return "죄송합니다. 해당 정보를 찾을 수 없습니다. 학교쪽으로 문의해주세요."
 
 def create_kakao_response(message):
@@ -127,7 +184,7 @@ def webhook():
         data = request.get_json()
         user_message = data['userRequest']['utterance']
         
-        # 새로운 핸들러 호출 (AI 제거 버전)
+        # 새로운 핸들러 호출 (AI 복원)
         response_text = handle_request(user_message)
         
         print(f"사용자: '{user_message}' / 챗봇: '{response_text[:30]}...'")
