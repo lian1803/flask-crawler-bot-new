@@ -37,6 +37,18 @@ def init_db():
         )
     ''')
     
+    # QA 데이터 테이블 (이미 생성되어 있음)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS qa_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            additional_answer TEXT,
+            category TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -85,6 +97,71 @@ def get_latest_notices():
             response += f"• {title} ({created_at})\n"
         return response
     return "현재 등록된 공지사항이 없습니다."
+
+def find_qa_match(user_message):
+    """qa_data 테이블에서 사용자 질문과 가장 유사한 답변을 찾습니다."""
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    
+    # 모든 QA 데이터 가져오기
+    cursor.execute('SELECT question, answer, additional_answer FROM qa_data')
+    qa_data = cursor.fetchall()
+    conn.close()
+    
+    best_match = None
+    best_score = 0
+    
+    for question, answer, additional_answer in qa_data:
+        # 키워드 매칭 점수 계산
+        score = 0
+        user_words = set(user_message.lower().split())
+        qa_words = set(question.lower().split())
+        
+        # 공통 단어 수 계산
+        common_words = user_words.intersection(qa_words)
+        score = len(common_words)
+        
+        # 특정 키워드에 가중치 부여
+        important_keywords = ['학년', '끝나', '방과후', '시정표', '급식', '공지', '일정']
+        for keyword in important_keywords:
+            if keyword in user_message and keyword in question:
+                score += 2
+        
+        if score > best_score:
+            best_score = score
+            best_match = (question, answer, additional_answer)
+    
+    # 최소 점수 이상일 때만 매칭 성공으로 간주
+    if best_score >= 1:
+        return best_match
+    return None
+
+def search_detailed_info(keyword):
+    """키워드를 기반으로 notices 테이블에서 구체적인 정보를 검색합니다."""
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    
+    # 키워드로 공지사항 검색
+    cursor.execute('''
+        SELECT title, content FROM notices 
+        WHERE title LIKE ? OR content LIKE ?
+        ORDER BY created_at DESC LIMIT 3
+    ''', (f'%{keyword}%', f'%{keyword}%'))
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    if results:
+        detailed_info = f"관련 상세 정보를 찾았습니다:\n\n"
+        for title, content in results:
+            detailed_info += f"📋 {title}\n"
+            if content:
+                # 내용이 너무 길면 앞부분만 표시
+                content_preview = content[:200] + "..." if len(content) > 200 else content
+                detailed_info += f"{content_preview}\n"
+            detailed_info += "\n"
+        return detailed_info
+    return None
 
 # --- OpenAI 클라이언트 설정 ---
 api_key = os.environ.get('OPENAI_API_KEY')
@@ -139,9 +216,11 @@ def analyze_with_ai(user_message):
         print(f"OpenAI API 오류: {str(e)}")
         return None
 
-# --- 메인 핸들러 (AI 복원) ---
+# --- 개선된 메인 핸들러 ---
 def handle_request(user_message):
-    """사용자 요청을 단계별로 처리합니다. (AI 복원)"""
+    """사용자 요청을 단계별로 처리합니다. (맥락 이해 개선)"""
+    
+    # 1단계: 식단 관련 질문 처리
     meal_keywords = ['급식', '식단', '메뉴', '밥', '점심']
     if any(keyword in user_message for keyword in meal_keywords):
         target_date = get_target_date(user_message)
@@ -150,18 +229,46 @@ def handle_request(user_message):
             meal_answer = get_meal_info(target_date)
             if '없습니다' not in meal_answer:
                 return meal_answer
+    
+    # 2단계: 공지사항 관련 질문 처리
     notice_keywords = ['공지', '알림', '안내', '새소식']
     if any(keyword in user_message for keyword in notice_keywords):
         print("INFO: 공지사항 질문으로 판단")
         notice_answer = get_latest_notices()
         if '없습니다' not in notice_answer:
             return notice_answer
-    # 2단계: AI에게 넘기기
+    
+    # 3단계: QA 데이터에서 맥락 매칭
+    print("INFO: QA 데이터에서 맥락 매칭 시도")
+    qa_match = find_qa_match(user_message)
+    
+    if qa_match:
+        question, answer, additional_answer = qa_match
+        print(f"INFO: QA 매칭 성공 - {question}")
+        
+        # 4단계: QA 답변을 키워드로 사용해서 구체적인 정보 검색
+        detailed_info = search_detailed_info(answer)
+        
+        if detailed_info:
+            # 구체적인 정보가 있으면 그것을 우선 사용
+            response = detailed_info
+            if additional_answer:
+                response += f"\n💡 추가 정보: {additional_answer}"
+            return response
+        else:
+            # 구체적인 정보가 없으면 QA 답변 사용
+            response = answer
+            if additional_answer:
+                response += f"\n\n추가 정보: {additional_answer}"
+            return response
+    
+    # 5단계: AI에게 넘기기
     print("INFO: AI에게 질문 전달")
     ai_answer = analyze_with_ai(user_message)
     if ai_answer:
         return ai_answer
-    # 3단계: AI도 답변 못하면 최종 폴백
+    
+    # 6단계: 최종 폴백
     return "죄송합니다. 해당 정보를 찾을 수 없습니다. 학교쪽으로 문의해주세요."
 
 def create_kakao_response(message):
@@ -184,7 +291,7 @@ def webhook():
         data = request.get_json()
         user_message = data['userRequest']['utterance']
         
-        # 새로운 핸들러 호출 (AI 복원)
+        # 새로운 핸들러 호출 (맥락 이해 개선)
         response_text = handle_request(user_message)
         
         print(f"사용자: '{user_message}' / 챗봇: '{response_text[:30]}...'")
@@ -197,8 +304,8 @@ def webhook():
 
 @app.route('/')
 def home():
-    return "파주와석초등학교 챗봇 서버 v2.1 (Fast Response - No AI)"
+    return "파주와석초등학교 챗봇 서버 v2.2 (맥락 이해 개선)"
 
 if __name__ == '__main__':
-    init_db()  # 서버 시작 시 DB 초기화
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
+    init_db()
+    app.run(debug=True, host='0.0.0.0', port=5000) 
