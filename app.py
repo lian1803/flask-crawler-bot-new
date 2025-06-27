@@ -216,9 +216,19 @@ def analyze_with_ai(user_message):
         print(f"OpenAI API 오류: {str(e)}")
         return None
 
+def extract_url(text):
+    """텍스트에서 URL 추출"""
+    if not text:
+        return None
+    url_pattern = r'(https?://[\w\-\.\?&=/%#]+)'
+    match = re.search(url_pattern, text)
+    if match:
+        return match.group(1)
+    return None
+
 # --- 개선된 메인 핸들러 ---
 def handle_request(user_message):
-    """사용자 요청을 단계별로 처리합니다. (맥락 이해 개선)"""
+    """사용자 요청을 단계별로 처리합니다. (맥락 이해 개선 + 자연스러운 링크 안내)"""
     
     # 1단계: 식단 관련 질문 처리
     meal_keywords = ['급식', '식단', '메뉴', '밥', '점심']
@@ -249,14 +259,18 @@ def handle_request(user_message):
         # 4단계: QA 답변을 키워드로 사용해서 구체적인 정보 검색
         detailed_info = search_detailed_info(answer)
         
+        # --- 자연스러운 링크 안내 추가 ---
+        url = extract_url(answer) or extract_url(additional_answer)
+        if url:
+            response = "관련 내용은 아래 링크에서 확인하실 수 있습니다!\n" + url
+            return response
+        # ---
         if detailed_info:
-            # 구체적인 정보가 있으면 그것을 우선 사용
             response = detailed_info
             if additional_answer:
                 response += f"\n💡 추가 정보: {additional_answer}"
             return response
         else:
-            # 구체적인 정보가 없으면 QA 답변 사용
             response = answer
             if additional_answer:
                 response += f"\n\n추가 정보: {additional_answer}"
