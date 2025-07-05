@@ -145,6 +145,16 @@ scheduler.add_job(
     replace_existing=True
 )
 
+# 테스트용: 1분마다 실행 (개발/테스트 시에만 사용)
+# scheduler.add_job(
+#     func=auto_update_excel_data,
+#     trigger='interval',
+#     minutes=1,
+#     id='test_auto_update_excel_data',
+#     name='테스트용 엑셀 데이터 자동 업데이트',
+#     replace_existing=True
+# )
+
 print(f"[{datetime.now()}] 스케줄러가 시작되었습니다. 매일 자정에 엑셀 데이터가 자동으로 업데이트됩니다.")
 
 def get_target_date(text):
@@ -613,6 +623,122 @@ def webhook():
 def home():
     return "파주와석초등학교 챗봇 서버 v2.2 (맥락 이해 개선)"
 
+@app.route('/test')
+def test_page():
+    """테스트용 HTML 페이지"""
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>챗봇 스케줄러 테스트</title>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .button { 
+                background: #007bff; color: white; padding: 10px 20px; 
+                border: none; border-radius: 5px; cursor: pointer; margin: 5px;
+            }
+            .button:hover { background: #0056b3; }
+            .result { 
+                background: #f8f9fa; border: 1px solid #dee2e6; 
+                border-radius: 5px; padding: 15px; margin: 10px 0;
+                white-space: pre-wrap; font-family: monospace;
+            }
+            .success { border-color: #28a745; background: #d4edda; }
+            .error { border-color: #dc3545; background: #f8d7da; }
+        </style>
+    </head>
+    <body>
+        <h1>챗봇 스케줄러 테스트 페이지</h1>
+        
+        <h2>1. 스케줄러 상태 확인</h2>
+        <button class="button" onclick="checkSchedule()">스케줄러 상태 확인</button>
+        <div id="scheduleResult" class="result"></div>
+        
+        <h2>2. DB 상태 확인</h2>
+        <button class="button" onclick="checkDB()">DB 상태 확인</button>
+        <div id="dbResult" class="result"></div>
+        
+        <h2>3. 엑셀 데이터 업데이트 테스트</h2>
+        <button class="button" onclick="testUpdate()">스케줄러 즉시 실행</button>
+        <div id="testResult" class="result"></div>
+        
+        <h2>4. 수동 업데이트</h2>
+        <button class="button" onclick="manualUpdate()">수동 업데이트</button>
+        <div id="manualResult" class="result"></div>
+        
+        <script>
+            async function checkSchedule() {
+                try {
+                    const response = await fetch('/schedule-status');
+                    const data = await response.json();
+                    document.getElementById('scheduleResult').innerHTML = 
+                        JSON.stringify(data, null, 2);
+                    document.getElementById('scheduleResult').className = 
+                        'result success';
+                } catch (error) {
+                    document.getElementById('scheduleResult').innerHTML = 
+                        '오류: ' + error.message;
+                    document.getElementById('scheduleResult').className = 
+                        'result error';
+                }
+            }
+            
+            async function checkDB() {
+                try {
+                    const response = await fetch('/db-status');
+                    const data = await response.json();
+                    document.getElementById('dbResult').innerHTML = 
+                        JSON.stringify(data, null, 2);
+                    document.getElementById('dbResult').className = 
+                        'result success';
+                } catch (error) {
+                    document.getElementById('dbResult').innerHTML = 
+                        '오류: ' + error.message;
+                    document.getElementById('dbResult').className = 
+                        'result error';
+                }
+            }
+            
+            async function testUpdate() {
+                try {
+                    document.getElementById('testResult').innerHTML = '실행 중...';
+                    const response = await fetch('/test-schedule', {method: 'POST'});
+                    const data = await response.json();
+                    document.getElementById('testResult').innerHTML = 
+                        JSON.stringify(data, null, 2);
+                    document.getElementById('testResult').className = 
+                        'result success';
+                } catch (error) {
+                    document.getElementById('testResult').innerHTML = 
+                        '오류: ' + error.message;
+                    document.getElementById('testResult').className = 
+                        'result error';
+                }
+            }
+            
+            async function manualUpdate() {
+                try {
+                    document.getElementById('manualResult').innerHTML = '실행 중...';
+                    const response = await fetch('/update-excel', {method: 'POST'});
+                    const data = await response.json();
+                    document.getElementById('manualResult').innerHTML = 
+                        JSON.stringify(data, null, 2);
+                    document.getElementById('manualResult').className = 
+                        'result success';
+                } catch (error) {
+                    document.getElementById('manualResult').innerHTML = 
+                        '오류: ' + error.message;
+                    document.getElementById('manualResult').className = 
+                        'result error';
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
 @app.route('/update-excel', methods=['POST'])
 def manual_update_excel():
     """수동으로 엑셀 데이터 업데이트를 실행하는 API"""
@@ -656,6 +782,86 @@ def get_schedule_status():
         return jsonify({
             "status": "error",
             "message": f"스케줄러 상태 확인 중 오류: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route('/test-schedule', methods=['POST'])
+def test_schedule():
+    """테스트용: 스케줄러를 즉시 실행"""
+    try:
+        print(f"[{datetime.now()}] 테스트 스케줄러 실행 요청됨")
+        
+        # 현재 DB 상태 확인
+        conn = sqlite3.connect('school_data.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM qa_data")
+        before_count = cursor.fetchone()[0]
+        conn.close()
+        
+        # 스케줄러 실행
+        auto_update_excel_data()
+        
+        # 실행 후 DB 상태 확인
+        conn = sqlite3.connect('school_data.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM qa_data")
+        after_count = cursor.fetchone()[0]
+        conn.close()
+        
+        return jsonify({
+            "status": "success",
+            "message": "테스트 스케줄러 실행 완료",
+            "before_count": before_count,
+            "after_count": after_count,
+            "added_count": after_count - before_count,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        print(f"[{datetime.now()}] 테스트 스케줄러 실행 중 오류: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"테스트 실행 중 오류: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route('/db-status', methods=['GET'])
+def get_db_status():
+    """DB 상태를 확인하는 API"""
+    try:
+        conn = sqlite3.connect('school_data.db')
+        cursor = conn.cursor()
+        
+        # 전체 데이터 수
+        cursor.execute("SELECT COUNT(*) FROM qa_data")
+        total_count = cursor.fetchone()[0]
+        
+        # 카테고리별 데이터 수
+        cursor.execute("SELECT category, COUNT(*) FROM qa_data GROUP BY category")
+        category_counts = dict(cursor.fetchall())
+        
+        # 최근 추가된 데이터 5개
+        cursor.execute("SELECT question, category, created_at FROM qa_data ORDER BY created_at DESC LIMIT 5")
+        recent_data = cursor.fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            "status": "success",
+            "total_count": total_count,
+            "category_counts": category_counts,
+            "recent_data": [
+                {
+                    "question": row[0][:50] + "..." if len(row[0]) > 50 else row[0],
+                    "category": row[1],
+                    "created_at": row[2]
+                } for row in recent_data
+            ],
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"DB 상태 확인 중 오류: {str(e)}",
             "timestamp": datetime.now().isoformat()
         }), 500
 
