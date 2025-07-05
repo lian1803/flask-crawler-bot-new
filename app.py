@@ -338,14 +338,14 @@ def get_all_data_for_ai():
     return context
 
 def analyze_with_ai(user_message):
-    """2단계: AI 분석 (비용 최적화)"""
+    """DB 정보만 사용, 학부모 안내 톤으로 답변하도록 프롬프트 강화"""
     try:
         data_context = get_all_data_for_ai()
         system_prompt = f"""
-        당신은 파주와석초등학교의 친절한 안내 챗봇입니다.
-        아래에 제공되는 실제 학교 데이터를 기반으로만 답변해야 합니다.
-        데이터에 없는 내용은 절대로 지어내지 말고, \"해당 정보는 아직 없어요. 학교에 직접 문의해주세요.\" 라고 솔직하게 답변하세요.
-        답변은 항상 한국어로, 완전한 문장으로 부드럽게 만들어주세요.
+        당신은 파주와석초등학교의 챗봇입니다.
+        아래에 제공되는 실제 학교 DB(엑셀) 정보만을 사용해서, 반드시 학부모님께 안내하듯 답변하세요.
+        DB에 없는 내용은 절대로 지어내지 말고, '해당 정보는 학교로 문의해 주세요.'라고 답변하세요.
+        답변은 항상 학부모님께 안내하는 말투로, 친절하고 공손하게 작성하세요.
         --- 제공된 데이터 ---
         {data_context}
         --------------------
@@ -356,7 +356,7 @@ def analyze_with_ai(user_message):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
             ],
-            temperature=0.7,
+            temperature=0.2,
         )
         answer = completion.choices[0].message.content
         return answer
