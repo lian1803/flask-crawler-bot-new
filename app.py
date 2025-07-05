@@ -5,7 +5,6 @@ import os
 from datetime import datetime, timedelta
 import re
 from openai import OpenAI
-from konlpy.tag import Okt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
