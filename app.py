@@ -424,8 +424,8 @@ def extract_nouns(text):
     words = re.findall(r'[가-힣a-zA-Z]{2,}', text)
     return [w for w in words if w not in STOPWORDS]
 
-def find_best_link_answer(user_message):
-    """명사 추출+불용어 제거 후, DB 질문과 부분일치/유사도 기반으로 링크 안내"""
+def find_best_link_answer(user_message, sim_threshold=0.5):
+    """명사 추출+불용어 제거 후, DB 질문과 부분일치/유사도 기반으로 링크 안내. 임계값 미만이면 None 반환."""
     user_nouns = extract_nouns(user_message)
     if not user_nouns:
         return None
@@ -454,6 +454,9 @@ def find_best_link_answer(user_message):
         qa_vecs = vectorizer.transform(questions)
         sims = cosine_similarity(user_vec, qa_vecs)[0]
         best_idx = sims.argmax()
+        best_score = sims[best_idx]
+        if best_score < sim_threshold:
+            return None
         best_q, best_a, best_add, _ = candidates[best_idx]
         if best_add:
             return f"{best_a}\n\n추가 정보: {best_add}"
