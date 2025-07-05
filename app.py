@@ -5,6 +5,9 @@ import os
 from datetime import datetime, timedelta
 import re
 from openai import OpenAI
+from konlpy.tag import Okt
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
 
@@ -414,8 +417,52 @@ def find_link_answer_by_keyword(user_message):
     conn.close()
     return None
 
+# 불용어 리스트(확장 가능)
+STOPWORDS = set(['우리', '저희', '애들', '정보', '학교', '문의', '관련', '있나요', '있을까요', '알려줘', '알려주세요', '좀', '어떻게', '무엇', '뭐', '어디', '언제', '누구', '왜', '몇', '가요', '인가요', '요'])
+
+def extract_nouns(text):
+    okt = Okt()
+    nouns = okt.nouns(text)
+    return [n for n in nouns if n not in STOPWORDS and len(n) > 1]
+
+def find_best_link_answer(user_message):
+    """명사 추출+불용어 제거 후, DB 질문과 부분일치/유사도 기반으로 링크 안내"""
+    user_nouns = extract_nouns(user_message)
+    if not user_nouns:
+        return None
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT question, answer, additional_answer FROM qa_data')
+    qa_rows = cursor.fetchall()
+    conn.close()
+    # 1. 명사 포함 부분일치 후보
+    candidates = []
+    for q, a, add in qa_rows:
+        q_nouns = extract_nouns(q)
+        if any(n in q_nouns for n in user_nouns):
+            url = extract_url(a) or extract_url(add)
+            candidates.append((q, a, add, url))
+    # 2. 링크가 있는 후보 우선
+    for q, a, add, url in candidates:
+        if url:
+            return f"관련 안내는 아래 링크에서 확인하실 수 있습니다!\n{url}"
+    # 3. 후보가 여러 개면 유사도 기반으로 가장 가까운 질문의 답변 안내
+    if candidates:
+        questions = [q for q, _, _, _ in candidates]
+        user_texts = [user_message] + questions
+        vectorizer = TfidfVectorizer().fit(user_texts)
+        user_vec = vectorizer.transform([user_message])
+        qa_vecs = vectorizer.transform(questions)
+        sims = cosine_similarity(user_vec, qa_vecs)[0]
+        best_idx = sims.argmax()
+        best_q, best_a, best_add, _ = candidates[best_idx]
+        if best_add:
+            return f"{best_a}\n\n추가 정보: {best_add}"
+        return best_a
+    return None
+
 def handle_request(user_message):
-    """단순화된 챗봇 로직: 인사/잡담, DB 완전일치/부분일치(링크 우선), AI, 폴백"""
+    """명사 추출+유사도 기반: 인사/잡담, DB 완전일치, 명사/유사도 기반, AI, 폴백"""
     # 1. 인사/잡담 필터
     if is_greeting_or_smalltalk(user_message):
         return "안녕하세요! 무엇을 도와드릴까요?"
@@ -435,10 +482,10 @@ def handle_request(user_message):
             return f"{answer}\n\n추가 정보: {additional_answer}"
         return answer
 
-    # 3. DB 부분일치(키워드포함) + 링크 우선
-    link_answer = find_link_answer_by_keyword(user_message)
-    if link_answer:
-        return link_answer
+    # 3. 명사 추출+유사도 기반 DB 매칭 (링크 우선)
+    best_link_answer = find_best_link_answer(user_message)
+    if best_link_answer:
+        return best_link_answer
 
     # 4. AI에게 DB 전체 컨텍스트와 함께 질문 전달
     print("INFO: AI에게 질문 전달 (DB 컨텍스트 포함)")
