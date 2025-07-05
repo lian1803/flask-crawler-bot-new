@@ -424,8 +424,14 @@ def extract_nouns(text):
     words = re.findall(r'[가-힣a-zA-Z]{2,}', text)
     return [w for w in words if w not in STOPWORDS]
 
+def append_link_to_answer(answer, additional_answer):
+    """답변/추가답변에 링크가 있으면 답변 마지막에 항상 링크를 동봉"""
+    url = extract_url(answer) or extract_url(additional_answer)
+    if url:
+        return f"{answer}\n\n관련 자료는 아래 링크에서 확인하실 수 있습니다!\n{url}"
+    return answer
+
 def find_best_link_answer(user_message, sim_threshold=0.5):
-    """명사 추출+불용어 제거 후, DB 질문과 부분일치/유사도 기반으로 링크 안내. 임계값 미만이면 None 반환."""
     user_nouns = extract_nouns(user_message)
     if not user_nouns:
         return None
@@ -434,20 +440,14 @@ def find_best_link_answer(user_message, sim_threshold=0.5):
     cursor.execute('SELECT question, answer, additional_answer FROM qa_data')
     qa_rows = cursor.fetchall()
     conn.close()
-    # 1. 명사 포함 부분일치 후보
     candidates = []
     for q, a, add in qa_rows:
         q_nouns = extract_nouns(q)
         if any(n in q_nouns for n in user_nouns):
-            url = extract_url(a) or extract_url(add)
-            candidates.append((q, a, add, url))
-    # 2. 링크가 있는 후보 우선
-    for q, a, add, url in candidates:
-        if url:
-            return f"관련 안내는 아래 링크에서 확인하실 수 있습니다!\n{url}"
-    # 3. 후보가 여러 개면 유사도 기반으로 가장 가까운 질문의 답변 안내
+            candidates.append((q, a, add))
+    # 1. 후보가 여러 개면 유사도 기반으로 가장 가까운 질문의 답변 안내
     if candidates:
-        questions = [q for q, _, _, _ in candidates]
+        questions = [q for q, _, _ in candidates]
         user_texts = [user_message] + questions
         vectorizer = TfidfVectorizer().fit(user_texts)
         user_vec = vectorizer.transform([user_message])
@@ -457,19 +457,17 @@ def find_best_link_answer(user_message, sim_threshold=0.5):
         best_score = sims[best_idx]
         if best_score < sim_threshold:
             return None
-        best_q, best_a, best_add, _ = candidates[best_idx]
-        if best_add:
-            return f"{best_a}\n\n추가 정보: {best_add}"
-        return best_a
+        best_q, best_a, best_add = candidates[best_idx]
+        answer_with_link = append_link_to_answer(best_a, best_add)
+        if best_add and not extract_url(best_a) and not extract_url(best_add):
+            return f"{answer_with_link}\n\n추가 정보: {best_add}"
+        return answer_with_link
     return None
 
 def handle_request(user_message):
     """명사 추출+유사도 기반: 인사/잡담, DB 완전일치, 명사/유사도 기반, AI, 폴백"""
-    # 1. 인사/잡담 필터
     if is_greeting_or_smalltalk(user_message):
         return "안녕하세요! 무엇을 도와드릴까요?"
-
-    # 2. DB 완전일치 답변 (링크 우선)
     conn = sqlite3.connect('school_data.db')
     cursor = conn.cursor()
     cursor.execute('SELECT answer, additional_answer FROM qa_data WHERE question = ?', (user_message,))
@@ -477,25 +475,14 @@ def handle_request(user_message):
     conn.close()
     if result:
         answer, additional_answer = result
-        url = extract_url(answer) or extract_url(additional_answer)
-        if url:
-            return f"관련 안내는 아래 링크에서 확인하실 수 있습니다!\n{url}"
-        if additional_answer:
-            return f"{answer}\n\n추가 정보: {additional_answer}"
-        return answer
-
-    # 3. 명사 추출+유사도 기반 DB 매칭 (링크 우선)
+        return append_link_to_answer(answer, additional_answer)
     best_link_answer = find_best_link_answer(user_message)
     if best_link_answer:
         return best_link_answer
-
-    # 4. AI에게 DB 전체 컨텍스트와 함께 질문 전달
     print("INFO: AI에게 질문 전달 (DB 컨텍스트 포함)")
     ai_answer = analyze_with_ai(user_message)
     if ai_answer:
         return ai_answer
-
-    # 5. 폴백
     return "죄송합니다. 해당 정보를 찾을 수 없습니다. 학교로 문의해 주세요."
 
 def create_kakao_response(message):
