@@ -397,15 +397,25 @@ def get_exact_match_from_db(user_message):
     return None
 
 def handle_request(user_message):
-    """단순화된 챗봇 로직: 인사/잡담, DB 완전일치, AI, 폴백"""
+    """단순화된 챗봇 로직: 인사/잡담, DB 완전일치(링크 우선), AI, 폴백"""
     # 1. 인사/잡담 필터
     if is_greeting_or_smalltalk(user_message):
         return "안녕하세요! 무엇을 도와드릴까요?"
 
-    # 2. DB 완전일치 답변
-    db_answer = get_exact_match_from_db(user_message)
-    if db_answer:
-        return db_answer
+    # 2. DB 완전일치 답변 (링크 우선)
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT answer, additional_answer FROM qa_data WHERE question = ?', (user_message,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        answer, additional_answer = result
+        url = extract_url(answer) or extract_url(additional_answer)
+        if url:
+            return f"관련 안내는 아래 링크에서 확인하실 수 있습니다!\n{url}"
+        if additional_answer:
+            return f"{answer}\n\n추가 정보: {additional_answer}"
+        return answer
 
     # 3. AI에게 DB 전체 컨텍스트와 함께 질문 전달
     print("INFO: AI에게 질문 전달 (DB 컨텍스트 포함)")
