@@ -374,73 +374,47 @@ def extract_url(text):
         return match.group(1)
     return None
 
-# --- 개선된 메인 핸들러 ---
+def is_greeting_or_smalltalk(user_message):
+    """인사/잡담 여부 판별"""
+    greetings = [
+        '안녕', '안녕하세요', '반가워', 'ㅎㅇ', 'hello', 'hi', '하이', '고마워', '감사', '수고', '잘 부탁', '헬로', '굿모닝', '굿밤', '잘자', '잘 지내', '좋은 하루', '좋은 아침', '수고하세요', '수고하셨습니다'
+    ]
+    msg = user_message.lower().replace(' ', '')
+    return any(greet in msg for greet in greetings)
+
+def get_exact_match_from_db(user_message):
+    """DB에서 질문이 완전히 일치하는 답변을 찾음"""
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT answer, additional_answer FROM qa_data WHERE question = ?', (user_message,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        answer, additional_answer = result
+        if additional_answer:
+            return f"{answer}\n\n추가 정보: {additional_answer}"
+        return answer
+    return None
+
 def handle_request(user_message):
-    """사용자 요청을 단계별로 처리합니다. (똑똑한 매칭 + 맥락 이해 + 자연스러운 링크 안내)"""
-    
-    # 1단계: 식단 관련 질문 처리
-    meal_keywords = ['급식', '식단', '메뉴', '밥', '점심']
-    if any(keyword in user_message for keyword in meal_keywords):
-        target_date = get_target_date(user_message)
-        if target_date:
-            print(f"INFO: 식단 질문으로 판단, 날짜: {target_date}")
-            meal_answer = get_meal_info(target_date)
-            if '없습니다' not in meal_answer:
-                return meal_answer
-    
-    # 2단계: 공지사항 관련 질문 처리
-    notice_keywords = ['공지', '알림', '안내', '새소식']
-    if any(keyword in user_message for keyword in notice_keywords):
-        print("INFO: 공지사항 질문으로 판단")
-        notice_answer = get_latest_notices()
-        if '없습니다' not in notice_answer:
-            return notice_answer
-    
-    # 3단계: 질문 카테고리 자동 분류
-    print("INFO: 질문 카테고리 자동 분류 시도")
-    category = classify_question_category(user_message)
-    if category:
-        print(f"INFO: 분류된 카테고리 - {category}")
-    else:
-        print("INFO: 카테고리 분류 불가능")
-    
-    # 4단계: 똑똑한 QA 매칭 (동의어 + 의도 분석 + 관련성 점수)
-    print("INFO: 똑똑한 QA 매칭 시도")
-    qa_match = find_qa_match_smart(user_message, category)
-    
-    if qa_match:
-        question, answer, additional_answer, matched_category, score = qa_match
-        print(f"INFO: QA 매칭 성공 - {question} (카테고리: {matched_category}, 점수: {score})")
-        
-        # 5단계: QA 답변을 키워드로 사용해서 구체적인 정보 검색
-        detailed_info = search_detailed_info(answer)
-        
-        # --- 자연스러운 링크 안내 추가 ---
-        url = extract_url(answer) or extract_url(additional_answer)
-        if url:
-            response = "관련 내용은 아래 링크에서 확인하실 수 있습니다!\n" + url
-            return response
-        # ---
-        
-        if detailed_info:
-            response = detailed_info
-            if additional_answer:
-                response += f"\n💡 추가 정보: {additional_answer}"
-            return response
-        else:
-            response = answer
-            if additional_answer:
-                response += f"\n\n추가 정보: {additional_answer}"
-            return response
-    
-    # 6단계: AI에게 넘기기
-    print("INFO: AI에게 질문 전달")
+    """단순화된 챗봇 로직: 인사/잡담, DB 완전일치, AI, 폴백"""
+    # 1. 인사/잡담 필터
+    if is_greeting_or_smalltalk(user_message):
+        return "안녕하세요! 무엇을 도와드릴까요?"
+
+    # 2. DB 완전일치 답변
+    db_answer = get_exact_match_from_db(user_message)
+    if db_answer:
+        return db_answer
+
+    # 3. AI에게 DB 전체 컨텍스트와 함께 질문 전달
+    print("INFO: AI에게 질문 전달 (DB 컨텍스트 포함)")
     ai_answer = analyze_with_ai(user_message)
     if ai_answer:
         return ai_answer
-    
-    # 7단계: 최종 폴백
-    return "죄송합니다. 해당 정보를 찾을 수 없습니다. 학교쪽으로 문의해주세요."
+
+    # 4. 폴백
+    return "죄송합니다. 해당 정보를 찾을 수 없습니다. 학교로 문의해 주세요."
 
 def create_kakao_response(message):
     return {
