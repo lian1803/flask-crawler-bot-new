@@ -7,8 +7,15 @@ import re
 from openai import OpenAI
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import pandas as pd
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 app = Flask(__name__)
+
+# 스케줄러 초기화
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 # 데이터베이스 초기화
 def init_db():
@@ -53,6 +60,92 @@ def init_db():
     
     conn.commit()
     conn.close()
+
+def auto_update_excel_data():
+    """매일 자정에 실행되는 엑셀 데이터 자동 업데이트 함수"""
+    try:
+        print(f"[{datetime.now()}] 엑셀 데이터 자동 업데이트 시작")
+        
+        excel_file = '와석초 카카오톡 챗봇 개발을 위한 질문과 답변(0702).xlsx'
+        
+        # 엑셀 파일 존재 확인
+        if not os.path.exists(excel_file):
+            print(f"[{datetime.now()}] 엑셀 파일을 찾을 수 없습니다: {excel_file}")
+            return
+        
+        # 데이터베이스 연결
+        conn = sqlite3.connect('school_data.db')
+        cursor = conn.cursor()
+        
+        total_added = 0
+        
+        xl = pd.ExcelFile(excel_file)
+        for sheet_name in xl.sheet_names:
+            print(f"[{datetime.now()}] {sheet_name} 시트 처리 중")
+            df = pd.read_excel(excel_file, sheet_name=sheet_name)
+            
+            if sheet_name in ['초등', '유치원']:
+                for index, row in df.iterrows():
+                    question = row.get('질문 예시', None)
+                    answer = row.get('답변 ', None)
+                    additional_answer = row.get('추가답변', '')
+                    if pd.isna(additional_answer):
+                        additional_answer = ''
+                    if pd.notna(question) and pd.notna(answer):
+                        cursor.execute("SELECT id FROM qa_data WHERE question = ? AND category = ?", (question, sheet_name))
+                        existing = cursor.fetchone()
+                        if not existing:
+                            cursor.execute(
+                                "INSERT INTO qa_data (question, answer, additional_answer, category) VALUES (?, ?, ?, ?)",
+                                (question, answer, additional_answer, sheet_name)
+                            )
+                            total_added += 1
+                            print(f"[{datetime.now()}] 추가됨: {question[:30]}...")
+                        else:
+                            print(f"[{datetime.now()}] 중복됨: {question[:30]}...")
+            else:
+                # 첨부 사진 파일 시트 등 기타 시트 처리
+                for index, row in df.iterrows():
+                    # 첫 컬럼을 질문, 두 번째 컬럼을 답변, 나머지는 추가답변으로 합침
+                    columns = df.columns.tolist()
+                    question = row.get(columns[0], None)
+                    answer = row.get(columns[1], None) if len(columns) > 1 else ''
+                    additional_answer = ''
+                    if len(columns) > 2:
+                        additional_parts = [str(row.get(col, '')) for col in columns[2:] if pd.notna(row.get(col, ''))]
+                        additional_answer = '\n'.join(additional_parts)
+                    if pd.notna(question) and pd.notna(answer):
+                        cursor.execute("SELECT id FROM qa_data WHERE question = ? AND category = ?", (str(question), sheet_name))
+                        existing = cursor.fetchone()
+                        if not existing:
+                            cursor.execute(
+                                "INSERT INTO qa_data (question, answer, additional_answer, category) VALUES (?, ?, ?, ?)",
+                                (str(question), str(answer), additional_answer, sheet_name)
+                            )
+                            total_added += 1
+                            print(f"[{datetime.now()}] 추가됨: {str(question)[:30]}...")
+                        else:
+                            print(f"[{datetime.now()}] 중복됨: {str(question)[:30]}...")
+        
+        # 변경사항 저장
+        conn.commit()
+        conn.close()
+        
+        print(f"[{datetime.now()}] 엑셀 데이터 자동 업데이트 완료 - 총 {total_added}개 추가됨")
+        
+    except Exception as e:
+        print(f"[{datetime.now()}] 엑셀 데이터 자동 업데이트 중 오류 발생: {str(e)}")
+
+# 스케줄러에 작업 추가 (매일 자정에 실행)
+scheduler.add_job(
+    func=auto_update_excel_data,
+    trigger=CronTrigger(hour=0, minute=0),  # 매일 자정 (00:00)
+    id='auto_update_excel_data',
+    name='엑셀 데이터 자동 업데이트',
+    replace_existing=True
+)
+
+print(f"[{datetime.now()}] 스케줄러가 시작되었습니다. 매일 자정에 엑셀 데이터가 자동으로 업데이트됩니다.")
 
 def get_target_date(text):
     """사용자 메시지에서 날짜를 추출합니다."""
@@ -519,6 +612,52 @@ def webhook():
 @app.route('/')
 def home():
     return "파주와석초등학교 챗봇 서버 v2.2 (맥락 이해 개선)"
+
+@app.route('/update-excel', methods=['POST'])
+def manual_update_excel():
+    """수동으로 엑셀 데이터 업데이트를 실행하는 API"""
+    try:
+        print(f"[{datetime.now()}] 수동 엑셀 데이터 업데이트 요청됨")
+        auto_update_excel_data()
+        return jsonify({
+            "status": "success",
+            "message": "엑셀 데이터 업데이트가 완료되었습니다.",
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        print(f"[{datetime.now()}] 수동 업데이트 중 오류: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"업데이트 중 오류가 발생했습니다: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route('/schedule-status', methods=['GET'])
+def get_schedule_status():
+    """스케줄러 상태를 확인하는 API"""
+    try:
+        jobs = scheduler.get_jobs()
+        job_info = []
+        for job in jobs:
+            job_info.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
+                "trigger": str(job.trigger)
+            })
+        
+        return jsonify({
+            "status": "success",
+            "scheduler_running": scheduler.running,
+            "jobs": job_info,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"스케줄러 상태 확인 중 오류: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }), 500
 
 if __name__ == '__main__':
     init_db()

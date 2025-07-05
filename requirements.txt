@@ -4,4 +4,7 @@ beautifulsoup4==4.12.2
 gunicorn==21.2.0
 openai==1.2.4
 httpx==0.24.1
-scikit-learn 
+scikit-learn
+APScheduler
+pandas
+openpyxl 
