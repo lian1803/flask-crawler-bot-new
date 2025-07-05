@@ -396,8 +396,26 @@ def get_exact_match_from_db(user_message):
         return answer
     return None
 
+def find_link_answer_by_keyword(user_message):
+    """질문에 포함된 주요 키워드가 들어간 DB 질문을 찾아, 링크가 있으면 안내"""
+    keywords = [w for w in user_message.replace('?', '').replace('!', '').split() if len(w) > 1]
+    if not keywords:
+        return None
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    # 부분일치 검색 (질문에 키워드가 포함된 qa_data)
+    for keyword in keywords:
+        cursor.execute('SELECT answer, additional_answer FROM qa_data WHERE question LIKE ?', (f'%{keyword}%',))
+        for answer, additional_answer in cursor.fetchall():
+            url = extract_url(answer) or extract_url(additional_answer)
+            if url:
+                conn.close()
+                return f"관련 안내는 아래 링크에서 확인하실 수 있습니다!\n{url}"
+    conn.close()
+    return None
+
 def handle_request(user_message):
-    """단순화된 챗봇 로직: 인사/잡담, DB 완전일치(링크 우선), AI, 폴백"""
+    """단순화된 챗봇 로직: 인사/잡담, DB 완전일치/부분일치(링크 우선), AI, 폴백"""
     # 1. 인사/잡담 필터
     if is_greeting_or_smalltalk(user_message):
         return "안녕하세요! 무엇을 도와드릴까요?"
@@ -417,13 +435,18 @@ def handle_request(user_message):
             return f"{answer}\n\n추가 정보: {additional_answer}"
         return answer
 
-    # 3. AI에게 DB 전체 컨텍스트와 함께 질문 전달
+    # 3. DB 부분일치(키워드포함) + 링크 우선
+    link_answer = find_link_answer_by_keyword(user_message)
+    if link_answer:
+        return link_answer
+
+    # 4. AI에게 DB 전체 컨텍스트와 함께 질문 전달
     print("INFO: AI에게 질문 전달 (DB 컨텍스트 포함)")
     ai_answer = analyze_with_ai(user_message)
     if ai_answer:
         return ai_answer
 
-    # 4. 폴백
+    # 5. 폴백
     return "죄송합니다. 해당 정보를 찾을 수 없습니다. 학교로 문의해 주세요."
 
 def create_kakao_response(message):
