@@ -421,9 +421,9 @@ def find_link_answer_by_keyword(user_message):
 STOPWORDS = set(['우리', '저희', '애들', '정보', '학교', '문의', '관련', '있나요', '있을까요', '알려줘', '알려주세요', '좀', '어떻게', '무엇', '뭐', '어디', '언제', '누구', '왜', '몇', '가요', '인가요', '요'])
 
 def extract_nouns(text):
-    okt = Okt()
-    nouns = okt.nouns(text)
-    return [n for n in nouns if n not in STOPWORDS and len(n) > 1]
+    # konlpy 없이 한글/영문 단어만 추출 (2글자 이상, 불용어 제거)
+    words = re.findall(r'[가-힣a-zA-Z]{2,}', text)
+    return [w for w in words if w not in STOPWORDS]
 
 def find_best_link_answer(user_message):
     """명사 추출+불용어 제거 후, DB 질문과 부분일치/유사도 기반으로 링크 안내"""
