@@ -178,8 +178,13 @@ def get_target_date(text):
         
     return None
 
-def get_meal_info(date):
-    """특정 날짜의 식단 정보를 DB에서 가져옵니다."""
+def get_meal_info(date=None):
+    """특정 날짜의 식단 정보를 DB에서 가져옵니다. date가 없으면 오늘 날짜 사용."""
+    if date is None:
+        date = datetime.now().strftime("%Y-%m-%d")
+    weekday = datetime.strptime(date, "%Y-%m-%d").weekday()  # 0=월, ..., 5=토, 6=일
+    if weekday >= 5:
+        return f"{date}는 주말(토/일)이라 급식이 없습니다."
     conn = sqlite3.connect('school_data.db')
     cursor = conn.cursor()
     cursor.execute('SELECT menu FROM meals WHERE date = ? AND meal_type = "중식"', (date,))
@@ -568,7 +573,11 @@ def find_best_link_answer(user_message, sim_threshold=0.5):
     return None
 
 def handle_request(user_message):
-    """명사 추출+유사도 기반: 인사/잡담, DB 완전일치, 명사/유사도 기반, AI, 폴백"""
+    """명사 추출+유사도 기반: 인사/잡담, 급식, DB 완전일치, 명사/유사도 기반, AI, 폴백"""
+    # 급식 관련 키워드가 있으면 실시간 급식 안내
+    meal_keywords = ["오늘 급식", "오늘 식단", "오늘 메뉴", "오늘 점심", "오늘 중식"]
+    if any(k in user_message for k in meal_keywords):
+        return get_meal_info()
     if is_greeting_or_smalltalk(user_message):
         return "안녕하세요! 무엇을 도와드릴까요?"
     conn = sqlite3.connect('school_data.db')
