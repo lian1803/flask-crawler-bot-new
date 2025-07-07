@@ -18,9 +18,19 @@ def migrate_data():
     else:
         print(f"기존 데이터베이스 파일을 찾을 수 없습니다: {source_db}")
     
-    # 2. 엑셀 파일 복사
+    # 2. 엑셀 파일 복사 (새로운 파일이 있으면 복사하지 않음)
     source_excel = "../rol/와석초 카카오톡 챗봇 개발을 위한 질문과 답변 의 사본.xlsx"
     target_excel = "와석초 카카오톡 챗봇 개발을 위한 질문과 답변 의 사본.xlsx"
+    
+    # 새로운 엑셀 파일이 이미 있으면 복사하지 않음
+    if not os.path.exists("와석초 카카오톡 챗봇 개발을 위한 질문과 답변(0702).xlsx"):
+        if os.path.exists(source_excel):
+            shutil.copy2(source_excel, target_excel)
+            print(f"엑셀 파일 복사 완료: {source_excel} -> {target_excel}")
+        else:
+            print(f"기존 엑셀 파일을 찾을 수 없습니다: {source_excel}")
+    else:
+        print("새로운 엑셀 파일이 이미 존재합니다.")
     
     if os.path.exists(source_excel):
         shutil.copy2(source_excel, target_excel)
@@ -65,7 +75,7 @@ def migrate_data():
 
 def update_qa_data_from_excel():
     """엑셀 파일에서 QA 데이터 업데이트"""
-    excel_file = "와석초 카카오톡 챗봇 개발을 위한 질문과 답변 의 사본.xlsx"
+    excel_file = "와석초 카카오톡 챗봇 개발을 위한 질문과 답변(0702).xlsx"
     
     if not os.path.exists(excel_file):
         print(f"엑셀 파일을 찾을 수 없습니다: {excel_file}")
