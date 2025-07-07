@@ -1,0 +1,23 @@
+# API 설정
+OPENAI_API_KEY=your_openai_api_key_here
+API_TOKEN=your_api_token_here
+BASE_URL=https://ganglia.machaao.com
+
+# 대시보드 설정 (선택사항)
+DASHBOT_KEY=your_dashbot_key_here
+
+# 서버 설정
+PORT=5000
+
+# 봇 설정
+BOT_NAME=와석초 챗봇
+BOT_PERSONALITY=친근하고 도움이 되는 학교 챗봇
+
+# AI 모델 설정
+OPENAI_MODEL=gpt-3.5-turbo
+TEMPERATURE=0.7
+MAX_TOKENS=150
+
+# 데이터베이스 설정
+DB_PATH=school_data.db
+EXCEL_FILE=와석초 카카오톡 챗봇 개발을 위한 질문과 답변 의 사본.xlsx 
