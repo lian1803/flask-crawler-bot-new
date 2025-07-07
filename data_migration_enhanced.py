@@ -48,6 +48,15 @@ def migrate_excel_data():
         ws_elementary = wb['초등']
         elementary_count = 0
         
+        # row_data 샘플 출력
+        print("초등 시트 row_data 샘플:")
+        for row_num in range(2, min(7, ws_elementary.max_row + 1)):
+            row_data = []
+            for col_num in range(1, 11):
+                cell_value = ws_elementary.cell(row=row_num, column=col_num).value
+                row_data.append(str(cell_value) if cell_value is not None else "")
+            print(f"row {row_num}: {row_data}")
+        
         for row_num in range(2, ws_elementary.max_row + 1):  # 헤더 제외
             row_data = []
             for col_num in range(1, 11):  # 10열까지
@@ -58,13 +67,15 @@ def migrate_excel_data():
             if not any(row_data[1:3]):  # 질문과 답변이 모두 비어있으면
                 continue
                 
-            question = row_data[1].strip()
-            answer = row_data[2].strip()
+            question = row_data[1].strip()  # 질문 예시 (열 2)
+            answer = row_data[2].strip()    # 답변 (열 3)
             
             if question and answer and question != "질문 예시":
                 # 링크 추출 (6번째 열)
                 link = row_data[5].strip() if len(row_data) > 5 else ""
                 
+                # 실제 매핑 확인용 print
+                print(f"INSERT: category='초등', question='{question}', answer='{answer}', link='{link}'")
                 cursor.execute('''
                     INSERT INTO qa_data (category, question, answer, link)
                     VALUES (?, ?, ?, ?)
@@ -79,6 +90,15 @@ def migrate_excel_data():
         ws_kindergarten = wb['유치원']
         kindergarten_count = 0
         
+        # row_data 샘플 출력
+        print("유치원 시트 row_data 샘플:")
+        for row_num in range(2, min(7, ws_kindergarten.max_row + 1)):
+            row_data = []
+            for col_num in range(1, 11):
+                cell_value = ws_kindergarten.cell(row=row_num, column=col_num).value
+                row_data.append(str(cell_value) if cell_value is not None else "")
+            print(f"row {row_num}: {row_data}")
+        
         for row_num in range(2, ws_kindergarten.max_row + 1):  # 헤더 제외
             row_data = []
             for col_num in range(1, 11):  # 10열까지
@@ -89,13 +109,15 @@ def migrate_excel_data():
             if not any(row_data[1:3]):  # 질문과 답변이 모두 비어있으면
                 continue
                 
-            question = row_data[1].strip()
-            answer = row_data[2].strip()
+            question = row_data[1].strip()  # 질문 예시 (열 2)
+            answer = row_data[2].strip()    # 답변 (열 3)
             
             if question and answer and question != "질문 예시":
                 # 링크 추출 (6번째 열)
                 link = row_data[5].strip() if len(row_data) > 5 else ""
                 
+                # 실제 매핑 확인용 print
+                print(f"INSERT: category='유치원', question='{question}', answer='{answer}', link='{link}'")
                 cursor.execute('''
                     INSERT INTO qa_data (category, question, answer, link)
                     VALUES (?, ?, ?, ?)

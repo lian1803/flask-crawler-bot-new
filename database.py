@@ -17,10 +17,10 @@ class DatabaseManager:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS qa_data (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT NOT NULL,
                 question TEXT NOT NULL,
                 answer TEXT NOT NULL,
-                additional_answer TEXT,
-                category TEXT,
+                link TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -79,10 +79,10 @@ class DatabaseManager:
         return [
             {
                 'id': row[0],
-                'question': row[1],
-                'answer': row[2],
-                'additional_answer': row[3],
-                'category': row[4],
+                'category': row[1],
+                'question': row[2],
+                'answer': row[3],
+                'link': row[4],
                 'created_at': row[5]
             }
             for row in results

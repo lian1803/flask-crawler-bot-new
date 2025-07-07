@@ -15,8 +15,14 @@ class AILogic:
         self.vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
         
     def is_banned_content(self, text: str) -> bool:
-        """금지된 내용인지 확인"""
+        """금지된 내용인지 확인 (학교 관련 문의는 예외)"""
         text_lower = text.lower()
+        
+        # 학교 관련 문의는 허용
+        school_inquiry_keywords = ['학교폭력', '상담', '문의', '도움', '안내']
+        if any(keyword in text for keyword in school_inquiry_keywords):
+            return False
+            
         return any(word in text_lower for word in BAN_WORDS)
     
     def get_system_prompt(self) -> str:
@@ -72,11 +78,43 @@ class AILogic:
         return text.strip()
 
     def is_school_related(self, text: str) -> bool:
-        """와석초 관련 질문인지 판별 (학교명, 교사, 학년, 반, 급식, 방과후 등 키워드 포함)"""
-        keywords = [
-            '와석초', '학교', '선생', '교사', '학년', '반', '학생', '급식', '식단', '방과후', '하교', '등교', '교실', '학사', '수업', '상담', '교무실', '교장', '교감', '유치원', '돌봄', '학부모', '행정실', '시설', '공지', '알림', '방학', '전학', '입학', '졸업', '체험', '결석', '출석', '신청', '수업', '교재', '교과서', '도서실', '분실물', '쉼터', '늘봄', '특수학급', '특성화', '참여수업', '학부모', '학사일정', '학교생활', '학교장', '학교시설', '학교운영', '학교행사', '학교공지', '학교소식', '학교뉴스', '학교정보', '학교위치', '학교주소', '학교전화', '학교연락처', '학교홈페이지', '학교사이트', '학교웹사이트', '학교이메일', '학교팩스', '학교교무실', '학교행정실', '학교도서실', '학교체육관', '학교운동장', '학교강당', '학교식당', '학교매점', '학교분실물', '학교쉼터', '학교늘봄', '학교특수학급', '학교특성화', '학교참여수업', '학교학부모', '학교학사일정', '학교생활', '학교장', '학교시설', '학교운영', '학교행사', '학교공지', '학교소식', '학교뉴스', '학교정보', '학교위치', '학교주소', '학교전화', '학교연락처', '학교홈페이지', '학교사이트', '학교웹사이트', '학교이메일', '학교팩스', '학교교무실', '학교행정실', '학교도서실', '학교체육관', '학교운동장', '학교강당', '학교식당', '학교매점', '학교분실물', '학교쉼터', '학교늘봄', '학교특수학급', '학교특성화', '학교참여수업', '학교학부모', '학교학사일정', '학교생활'
+        """와석초 관련 질문인지 판별 (더 포괄적으로 판단, QA DB 유사도도 활용)"""
+        # 기본 학교 관련 키워드
+        school_keywords = [
+            '와석초', '학교', '선생', '교사', '학년', '반', '학생', '급식', '식단', '방과후', 
+            '하교', '등교', '교실', '학사', '수업', '상담', '교무실', '교장', '교감', '유치원', 
+            '돌봄', '학부모', '행정실', '시설', '공지', '알림', '방학', '전학', '입학', '졸업', 
+            '체험', '결석', '출석', '신청', '교재', '교과서', '도서실', '분실물', '쉼터', '늘봄'
         ]
-        return any(k in text for k in keywords)
+        
+        # 질문 패턴 (학교 관련 질문임을 나타내는 단어들)
+        question_patterns = [
+            '언제', '어디서', '어떻게', '몇시', '얼마', '무엇', '누구', '왜', '어떤',
+            '절차', '신청', '발급', '연락', '문의', '안내', '정보', '위치', '시간', '비용'
+        ]
+        # 추가 패턴 (학교 행정/서류/사진 등)
+        extra_patterns = [
+            '필요한 서류', '기간', '방법', '연락처', '재발급', '첨부', '사진', '파일', '양식', '증명서', '신청서', '보고서'
+        ]
+        if any(p in text for p in extra_patterns):
+            return True
+        
+        # QA DB 질문과 유사도 0.15 이상이면 True
+        try:
+            qa_data = self.db.get_qa_data()
+            questions = [qa['question'] for qa in qa_data]
+            if questions:
+                vectorizer = TfidfVectorizer().fit(questions + [text])
+                tfidf = vectorizer.transform([text] + questions)
+                sims = cosine_similarity(tfidf[0:1], tfidf[1:]).flatten()
+                if sims.max() > 0.15:
+                    return True
+        except Exception:
+            pass
+        
+        has_school_keyword = any(k in text for k in school_keywords)
+        has_question_pattern = any(p in text for p in question_patterns)
+        return has_school_keyword or has_question_pattern
 
     def find_qa_match(self, user_message: str, threshold: float = 0.2) -> Optional[Dict]:
         """QA 데이터베이스에서 유사한 질문 찾기 (임계값 완화, 전처리 적용)"""
@@ -159,13 +197,20 @@ class AILogic:
         
         # 1. 식단 관련 질문 확인
         if any(keyword in user_message for keyword in ["급식", "식단", "밥", "점심", "메뉴"]):
-            date = self.get_date_from_message(user_message)
-            if not date:
-                date = datetime.now().strftime("%Y-%m-%d")
+            # "오늘의 급식" 같은 일반적인 질문은 DB에서 답변
+            if "오늘" in user_message or "급식" in user_message:
+                qa_match = self.find_qa_match(user_message)
+                if qa_match:
+                    response = qa_match['answer']
+                    self.db.save_conversation(user_id, user_message, response)
+                    return True, response
             
-            response = self.get_meal_info(date)
-            self.db.save_conversation(user_id, user_message, response)
-            return True, response
+            # 구체적인 날짜가 있는 경우에만 실제 DB 조회
+            date = self.get_date_from_message(user_message)
+            if date:
+                response = self.get_meal_info(date)
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
         
         # 2. 공지사항 관련 질문 확인
         if any(keyword in user_message for keyword in ["공지", "알림", "소식", "뉴스"]):
