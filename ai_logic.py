@@ -25,11 +25,11 @@ class AILogic:
 다음 규칙을 따라주세요:
 
 1. 항상 친근하고 정중하게 응답하세요
-2. 학교 관련 질문에 대해 정확한 정보를 제공하세요
-3. 모르는 내용은 솔직히 모른다고 말하세요
+2. 반드시 아래 제공된 학교 데이터베이스 정보만을 참고해서 답변하세요
+3. 데이터베이스에 없는 정보는 "죄송합니다. 해당 정보는 데이터베이스에 없습니다."라고 답변하세요
 4. 한국어로 응답하세요
 5. 답변은 간결하고 명확하게 작성하세요
-6. 사용자가 학교 관련 정보를 요청하면 데이터베이스에서 찾아서 제공하세요
+6. 일반적인 대화나 학교와 관련 없는 질문에는 "와석초등학교 관련 질문에만 답변할 수 있습니다."라고 답변하세요
 
 학교 정보:
 - 학교명: 와석초등학교
@@ -38,7 +38,16 @@ class AILogic:
     
     def build_conversation_context(self, user_id: str, current_message: str) -> List[Dict]:
         """대화 컨텍스트 구축"""
-        messages = [{"role": "system", "content": self.get_system_prompt()}]
+        # 학교 데이터베이스 정보 가져오기
+        qa_data = self.db.get_qa_data()
+        school_info = "와석초등학교 관련 정보:\n"
+        
+        for qa in qa_data[:10]:  # 최대 10개 QA 정보만 포함
+            school_info += f"Q: {qa['question']}\nA: {qa['answer']}\n\n"
+        
+        system_prompt = self.get_system_prompt() + "\n\n" + school_info
+        
+        messages = [{"role": "system", "content": system_prompt}]
         
         # 최근 대화 히스토리 가져오기
         history = self.db.get_conversation_history(user_id, limit=3)
