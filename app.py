@@ -25,14 +25,22 @@ def exception_handler(exception):
 def extract_user_id(request):
     """요청에서 사용자 ID 추출"""
     try:
-        # 카카오톡 챗봇에서 사용자 ID 추출
+        body = request.get_json()
+        
+        # 카카오톡 챗봇 표준 형식
+        if body and 'userRequest' in body:
+            return body['userRequest']['user']['id']
+        elif body and 'action' in body and 'params' in body:
+            return body['action']['params'].get('userId', 'unknown')
+        
+        # machaao 형식
         if 'machaao-user-id' in request.headers:
             return request.headers['machaao-user-id']
         elif 'user-id' in request.headers:
             return request.headers['user-id']
-        else:
-            # 기본값으로 IP 주소 사용
-            return request.remote_addr
+        
+        # 기본값으로 IP 주소 사용
+        return request.remote_addr
     except Exception as e:
         exception_handler(e)
         return "unknown_user"
@@ -41,16 +49,31 @@ def extract_message(request):
     """요청에서 메시지 추출"""
     try:
         body = request.get_json()
+        print(f"받은 요청 데이터: {body}")
         
-        # 카카오톡 챗봇 형식
-        if body and 'raw' in body:
-            import jwt
-            decoded_jwt = jwt.decode(body['raw'], KAKAO_BOT_TOKEN, algorithms=['HS512'])
-            text = decoded_jwt['sub']
-            if isinstance(text, str):
-                text = json.loads(text)
-            
-            return text['messaging'][0]['message_data']['text']
+        # 카카오톡 챗봇 표준 형식
+        if body and 'action' in body and 'params' in body:
+            # 카카오톡 챗봇 v2.0 형식
+            if 'utterance' in body['action']['params']:
+                return body['action']['params']['utterance']
+            elif 'message' in body['action']['params']:
+                return body['action']['params']['message']
+        
+        # 카카오톡 챗봇 v1.0 형식
+        elif body and 'userRequest' in body:
+            return body['userRequest']['utterance']
+        
+        # machaao 형식
+        elif body and 'raw' in body:
+            try:
+                import jwt
+                decoded_jwt = jwt.decode(body['raw'], KAKAO_BOT_TOKEN, algorithms=['HS512'])
+                text = decoded_jwt['sub']
+                if isinstance(text, str):
+                    text = json.loads(text)
+                return text['messaging'][0]['message_data']['text']
+            except:
+                pass
         
         # 일반 JSON 형식
         elif body and 'message' in body:
@@ -60,10 +83,11 @@ def extract_message(request):
         elif request.form and 'message' in request.form:
             return request.form['message']
         
-        else:
-            return None
+        print(f"메시지를 찾을 수 없음: {body}")
+        return None
             
     except Exception as e:
+        print(f"메시지 추출 중 오류: {e}")
         exception_handler(e)
         return None
 
