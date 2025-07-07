@@ -1,0 +1,161 @@
+import sqlite3
+import json
+from datetime import datetime
+from typing import List, Dict, Optional
+
+class DatabaseManager:
+    def __init__(self, db_path: str = "school_data.db"):
+        self.db_path = db_path
+        self.init_database()
+    
+    def init_database(self):
+        """데이터베이스 초기화 및 테이블 생성"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # QA 데이터 테이블
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS qa_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                additional_answer TEXT,
+                category TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # 대화 히스토리 테이블
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS conversation_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                message TEXT NOT NULL,
+                response TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # 식단 테이블
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS meals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                meal_type TEXT,
+                menu TEXT,
+                image_url TEXT
+            )
+        ''')
+        
+        # 공지사항 테이블
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS notices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                content TEXT,
+                url TEXT,
+                created_at TEXT,
+                tags TEXT,
+                category TEXT
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+    
+    def get_qa_data(self, category: Optional[str] = None) -> List[Dict]:
+        """QA 데이터 조회"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        if category:
+            cursor.execute('SELECT * FROM qa_data WHERE category = ?', (category,))
+        else:
+            cursor.execute('SELECT * FROM qa_data')
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        return [
+            {
+                'id': row[0],
+                'question': row[1],
+                'answer': row[2],
+                'additional_answer': row[3],
+                'category': row[4],
+                'created_at': row[5]
+            }
+            for row in results
+        ]
+    
+    def save_conversation(self, user_id: str, message: str, response: str):
+        """대화 히스토리 저장"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            'INSERT INTO conversation_history (user_id, message, response) VALUES (?, ?, ?)',
+            (user_id, message, response)
+        )
+        
+        conn.commit()
+        conn.close()
+    
+    def get_conversation_history(self, user_id: str, limit: int = 5) -> List[Dict]:
+        """사용자별 대화 히스토리 조회"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            'SELECT * FROM conversation_history WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?',
+            (user_id, limit)
+        )
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        return [
+            {
+                'id': row[0],
+                'user_id': row[1],
+                'message': row[2],
+                'response': row[3],
+                'timestamp': row[4]
+            }
+            for row in results
+        ]
+    
+    def get_meal_info(self, date: str) -> Optional[str]:
+        """특정 날짜의 식단 정보 조회"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT menu FROM meals WHERE date = ? AND meal_type = "중식"', (date,))
+        result = cursor.fetchone()
+        
+        conn.close()
+        
+        return result[0] if result else None
+    
+    def get_latest_notices(self, limit: int = 5) -> List[Dict]:
+        """최신 공지사항 조회"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM notices ORDER BY created_at DESC LIMIT ?', (limit,))
+        results = cursor.fetchall()
+        
+        conn.close()
+        
+        return [
+            {
+                'id': row[0],
+                'title': row[1],
+                'content': row[2],
+                'url': row[3],
+                'created_at': row[4],
+                'tags': row[5],
+                'category': row[6]
+            }
+            for row in results
+        ] 
