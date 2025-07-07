@@ -1,5 +1,5 @@
 import sqlite3
-import pandas as pd
+import openpyxl
 import os
 import shutil
 from datetime import datetime
@@ -77,52 +77,53 @@ def update_qa_data_from_excel():
         
         total_added = 0
         
-        xl = pd.ExcelFile(excel_file)
-        for sheet_name in xl.sheet_names:
+        wb = openpyxl.load_workbook(excel_file)
+        for sheet_name in wb.sheetnames:
             print(f"{sheet_name} 시트 처리 중...")
-            df = pd.read_excel(excel_file, sheet_name=sheet_name)
+            ws = wb[sheet_name]
             
             if sheet_name in ['초등', '유치원']:
-                for index, row in df.iterrows():
-                    question = row.get('질문 예시', None)
-                    answer = row.get('답변 ', None)
-                    additional_answer = row.get('추가답변', '')
-                    if pd.isna(additional_answer):
-                        additional_answer = ''
-                    if pd.notna(question) and pd.notna(answer):
-                        cursor.execute("SELECT id FROM qa_data WHERE question = ? AND category = ?", (question, sheet_name))
-                        existing = cursor.fetchone()
-                        if not existing:
-                            cursor.execute(
-                                "INSERT INTO qa_data (question, answer, additional_answer, category) VALUES (?, ?, ?, ?)",
-                                (question, answer, additional_answer, sheet_name)
-                            )
-                            total_added += 1
-                            print(f"추가됨: {question[:30]}...")
-                        else:
-                            print(f"중복됨: {question[:30]}...")
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if len(row) >= 3:
+                        question = row[0]  # 질문 예시
+                        answer = row[1]    # 답변
+                        additional_answer = row[2] if row[2] else ''
+                        
+                        if question and answer:
+                            cursor.execute("SELECT id FROM qa_data WHERE question = ? AND category = ?", (question, sheet_name))
+                            existing = cursor.fetchone()
+                            if not existing:
+                                cursor.execute(
+                                    "INSERT INTO qa_data (question, answer, additional_answer, category) VALUES (?, ?, ?, ?)",
+                                    (question, answer, additional_answer, sheet_name)
+                                )
+                                total_added += 1
+                                print(f"추가됨: {question[:30]}...")
+                            else:
+                                print(f"중복됨: {question[:30]}...")
             else:
                 # 기타 시트 처리
-                for index, row in df.iterrows():
-                    columns = df.columns.tolist()
-                    question = row.get(columns[0], None)
-                    answer = row.get(columns[1], None) if len(columns) > 1 else ''
-                    additional_answer = ''
-                    if len(columns) > 2:
-                        additional_parts = [str(row.get(col, '')) for col in columns[2:] if pd.notna(row.get(col, ''))]
-                        additional_answer = '\n'.join(additional_parts)
-                    if pd.notna(question) and pd.notna(answer):
-                        cursor.execute("SELECT id FROM qa_data WHERE question = ? AND category = ?", (str(question), sheet_name))
-                        existing = cursor.fetchone()
-                        if not existing:
-                            cursor.execute(
-                                "INSERT INTO qa_data (question, answer, additional_answer, category) VALUES (?, ?, ?, ?)",
-                                (str(question), str(answer), additional_answer, sheet_name)
-                            )
-                            total_added += 1
-                            print(f"추가됨: {str(question)[:30]}...")
-                        else:
-                            print(f"중복됨: {str(question)[:30]}...")
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if len(row) >= 2:
+                        question = row[0]  # 첫 번째 컬럼
+                        answer = row[1]    # 두 번째 컬럼
+                        additional_answer = ''
+                        if len(row) > 2:
+                            additional_parts = [str(col) for col in row[2:] if col]
+                            additional_answer = '\n'.join(additional_parts)
+                        
+                        if question and answer:
+                            cursor.execute("SELECT id FROM qa_data WHERE question = ? AND category = ?", (str(question), sheet_name))
+                            existing = cursor.fetchone()
+                            if not existing:
+                                cursor.execute(
+                                    "INSERT INTO qa_data (question, answer, additional_answer, category) VALUES (?, ?, ?, ?)",
+                                    (str(question), str(answer), additional_answer, sheet_name)
+                                )
+                                total_added += 1
+                                print(f"추가됨: {str(question)[:30]}...")
+                            else:
+                                print(f"중복됨: {str(question)[:30]}...")
         
         conn.commit()
         conn.close()
