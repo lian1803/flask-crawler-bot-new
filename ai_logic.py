@@ -10,7 +10,7 @@ from database import DatabaseManager
 
 class AILogic:
     def __init__(self):
-        self.openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        openai.api_key = OPENAI_API_KEY
         self.db = DatabaseManager()
         self.vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
         
@@ -169,7 +169,7 @@ class AILogic:
         try:
             messages = self.build_conversation_context(user_id, user_message)
             
-            response = self.openai_client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model=OPENAI_MODEL,
                 messages=messages,
                 temperature=TEMPERATURE,
