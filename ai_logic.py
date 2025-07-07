@@ -61,36 +61,41 @@ class AILogic:
         
         return messages
     
-    def find_qa_match(self, user_message: str, threshold: float = 0.3) -> Optional[Dict]:
-        """QA 데이터베이스에서 유사한 질문 찾기"""
+    def preprocess_question(self, text: str) -> str:
+        """질문 전처리: 소문자화, 특수문자 제거, 불용어 제거 등"""
+        text = text.lower()
+        text = re.sub(r'[^\w\s]', '', text)
+        # 불용어 예시(확장 가능)
+        stopwords = ['은', '는', '이', '가', '을', '를', '에', '의', '도', '로', '과', '와', '에서', '에게', '한', '하다', '있다', '어떻게', '무엇', '어디', '언제', '왜', '누구']
+        for sw in stopwords:
+            text = text.replace(sw, '')
+        return text.strip()
+
+    def is_school_related(self, text: str) -> bool:
+        """와석초 관련 질문인지 판별 (학교명, 교사, 학년, 반, 급식, 방과후 등 키워드 포함)"""
+        keywords = [
+            '와석초', '학교', '선생', '교사', '학년', '반', '학생', '급식', '식단', '방과후', '하교', '등교', '교실', '학사', '수업', '상담', '교무실', '교장', '교감', '유치원', '돌봄', '학부모', '행정실', '시설', '공지', '알림', '방학', '전학', '입학', '졸업', '체험', '결석', '출석', '신청', '수업', '교재', '교과서', '도서실', '분실물', '쉼터', '늘봄', '특수학급', '특성화', '참여수업', '학부모', '학사일정', '학교생활', '학교장', '학교시설', '학교운영', '학교행사', '학교공지', '학교소식', '학교뉴스', '학교정보', '학교위치', '학교주소', '학교전화', '학교연락처', '학교홈페이지', '학교사이트', '학교웹사이트', '학교이메일', '학교팩스', '학교교무실', '학교행정실', '학교도서실', '학교체육관', '학교운동장', '학교강당', '학교식당', '학교매점', '학교분실물', '학교쉼터', '학교늘봄', '학교특수학급', '학교특성화', '학교참여수업', '학교학부모', '학교학사일정', '학교생활', '학교장', '학교시설', '학교운영', '학교행사', '학교공지', '학교소식', '학교뉴스', '학교정보', '학교위치', '학교주소', '학교전화', '학교연락처', '학교홈페이지', '학교사이트', '학교웹사이트', '학교이메일', '학교팩스', '학교교무실', '학교행정실', '학교도서실', '학교체육관', '학교운동장', '학교강당', '학교식당', '학교매점', '학교분실물', '학교쉼터', '학교늘봄', '학교특수학급', '학교특성화', '학교참여수업', '학교학부모', '학교학사일정', '학교생활'
+        ]
+        return any(k in text for k in keywords)
+
+    def find_qa_match(self, user_message: str, threshold: float = 0.2) -> Optional[Dict]:
+        """QA 데이터베이스에서 유사한 질문 찾기 (임계값 완화, 전처리 적용)"""
         qa_data = self.db.get_qa_data()
-        
         if not qa_data:
             return None
-        
-        # 질문들만 추출
-        questions = [qa['question'] for qa in qa_data]
-        
+        questions = [self.preprocess_question(qa['question']) for qa in qa_data]
+        user_message_prep = self.preprocess_question(user_message)
         if not questions:
             return None
-        
         try:
-            # TF-IDF 벡터화
-            tfidf_matrix = self.vectorizer.fit_transform([user_message] + questions)
-            
-            # 유사도 계산
+            tfidf_matrix = self.vectorizer.fit_transform([user_message_prep] + questions)
             similarities = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
-            
-            # 가장 유사한 질문 찾기
             max_similarity = similarities[0].max()
             max_index = similarities[0].argmax()
-            
             if max_similarity >= threshold:
                 return qa_data[max_index]
-            
         except Exception as e:
             print(f"QA 매칭 중 오류: {e}")
-        
         return None
     
     def get_date_from_message(self, text: str) -> Optional[str]:
@@ -148,6 +153,10 @@ class AILogic:
         if self.is_banned_content(user_message):
             return False, "부적절한 내용이 포함되어 있습니다. 다른 질문을 해주세요."
         
+        # 와석초 관련 질문인지 판별
+        if not self.is_school_related(user_message):
+            return False, "와석초등학교 관련 질문에만 답변할 수 있습니다."
+        
         # 1. 식단 관련 질문 확인
         if any(keyword in user_message for keyword in ["급식", "식단", "밥", "점심", "메뉴"]):
             date = self.get_date_from_message(user_message)
@@ -168,7 +177,7 @@ class AILogic:
         qa_match = self.find_qa_match(user_message)
         if qa_match:
             response = qa_match['answer']
-            if qa_match['additional_answer']:
+            if qa_match.get('additional_answer'):
                 response += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
             
             self.db.save_conversation(user_id, user_message, response)
