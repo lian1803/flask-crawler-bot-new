@@ -38,17 +38,18 @@ pip install -r requirements.txt
 ### 2. 환경 변수 설정
 ```bash
 export OPENAI_API_KEY="your_openai_api_key"
+export KAKAO_BOT_TOKEN="your_kakao_bot_token"
 ```
 
-### 3. 데이터베이스 설정
-```bash
-python data_migration_enhanced.py
-```
-
-### 4. 애플리케이션 실행
+### 3. 애플리케이션 실행
 ```bash
 python app.py
 ```
+
+### 4. Render 배포 (권장)
+- GitHub에 코드 푸시
+- Render에서 저장소 연결
+- 환경 변수 설정 후 자동 배포
 
 ## 📊 데이터베이스 구조
 

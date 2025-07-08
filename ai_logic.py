@@ -3,8 +3,6 @@ import json
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
 import re
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 from config import OPENAI_API_KEY, OPENAI_MODEL, TEMPERATURE, MAX_TOKENS, TOP_P, BAN_WORDS
 from database import DatabaseManager
 
@@ -12,8 +10,19 @@ class AILogic:
     def __init__(self):
         openai.api_key = OPENAI_API_KEY
         self.db = DatabaseManager()
-        self.vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
+        self.qa_data = None
+        self.load_qa_data()
         
+    def load_qa_data(self):
+        """QA 데이터 로드"""
+        try:
+            # JSON 파일에서 데이터 로드
+            with open('school_dataset.json', 'r', encoding='utf-8') as f:
+                self.qa_data = json.load(f)
+        except:
+            # DB에서 데이터 로드 (fallback)
+            self.qa_data = self.db.get_qa_data()
+    
     def is_banned_content(self, text: str) -> bool:
         """금지된 내용인지 확인 (학교 관련 문의는 예외)"""
         text_lower = text.lower()
@@ -78,7 +87,7 @@ class AILogic:
         return text.strip()
 
     def is_school_related(self, text: str) -> bool:
-        """와석초 관련 질문인지 판별 (더 포괄적으로 판단, QA DB 유사도도 활용)"""
+        """와석초 관련 질문인지 판별 (키워드 기반)"""
         # 기본 학교 관련 키워드
         school_keywords = [
             '와석초', '학교', '선생', '교사', '학년', '반', '학생', '급식', '식단', '방과후', 
@@ -99,16 +108,17 @@ class AILogic:
         if any(p in text for p in extra_patterns):
             return True
         
-        # QA DB 질문과 유사도 0.15 이상이면 True
+        # QA DB에서 키워드 매칭 확인
         try:
-            qa_data = self.db.get_qa_data()
-            questions = [qa['question'] for qa in qa_data]
-            if questions:
-                vectorizer = TfidfVectorizer().fit(questions + [text])
-                tfidf = vectorizer.transform([text] + questions)
-                sims = cosine_similarity(tfidf[0:1], tfidf[1:]).flatten()
-                if sims.max() > 0.15:
-                    return True
+            if self.qa_data:
+                text_lower = text.lower()
+                for qa in self.qa_data:
+                    question_lower = qa['question'].lower()
+                    # 중요 키워드 매칭
+                    important_keywords = ['상담', '방과후', '급식', '학교폭력', '등하교', '전학', '결석']
+                    for keyword in important_keywords:
+                        if keyword in text_lower and keyword in question_lower:
+                            return True
         except Exception:
             pass
         
@@ -116,22 +126,77 @@ class AILogic:
         has_question_pattern = any(p in text for p in question_patterns)
         return has_school_keyword or has_question_pattern
 
-    def find_qa_match(self, user_message: str, threshold: float = 0.2) -> Optional[Dict]:
-        """QA 데이터베이스에서 유사한 질문 찾기 (임계값 완화, 전처리 적용)"""
-        qa_data = self.db.get_qa_data()
-        if not qa_data:
+    def find_qa_match(self, user_message: str, threshold: float = 0.15) -> Optional[Dict]:
+        """QA 데이터베이스에서 유사한 질문 찾기 (향상된 키워드 기반)"""
+        if not self.qa_data:
             return None
-        questions = [self.preprocess_question(qa['question']) for qa in qa_data]
-        user_message_prep = self.preprocess_question(user_message)
-        if not questions:
-            return None
+        
         try:
-            tfidf_matrix = self.vectorizer.fit_transform([user_message_prep] + questions)
-            similarities = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
-            max_similarity = similarities[0].max()
-            max_index = similarities[0].argmax()
-            if max_similarity >= threshold:
-                return qa_data[max_index]
+            user_message_lower = user_message.lower()
+            best_match = None
+            best_score = 0
+            
+            for qa in self.qa_data:
+                question_lower = qa['question'].lower()
+                
+                # 1. 기본 키워드 매칭 점수
+                score = 0
+                user_words = set(user_message_lower.split())
+                question_words = set(question_lower.split())
+                common_words = user_words & question_words
+                score += len(common_words) * 0.4
+                
+                # 2. 부분 문자열 매칭 (더 관대하게)
+                for word in user_words:
+                    if len(word) > 1 and word in question_lower:
+                        score += 0.3
+                
+                # 3. 중요 키워드 가중치
+                important_keywords = [
+                    '상담', '방과후', '급식', '학교폭력', '등하교', '전학', '결석',
+                    '유치원', '초등', '학교', '학부모', '학생', '선생님', '교사',
+                    '시간', '언제', '어디서', '어떻게', '신청', '문의', '안내'
+                ]
+                for keyword in important_keywords:
+                    if keyword in user_message_lower and keyword in question_lower:
+                        score += 0.6
+                
+                # 4. 카테고리별 특화 키워드
+                category_keywords = {
+                    '초등': ['학년', '반', '교실', '수업', '하교', '등교'],
+                    '유치원': ['유치원', '원아', '원생', '하원', '등원'],
+                    '첨부파일': ['이미지', '파일', '참조', '첨부', '사진']
+                }
+                
+                for category, keywords in category_keywords.items():
+                    if qa.get('category') == category:
+                        for keyword in keywords:
+                            if keyword in user_message_lower:
+                                score += 0.4
+                
+                # 5. 문장 길이 보정 (짧은 질문에 유리하게)
+                if len(user_words) <= 3:
+                    score += 0.3
+                
+                # 6. 단일 키워드 매칭 (매우 짧은 질문)
+                if len(user_words) == 1:
+                    for word in user_words:
+                        if word in question_lower:
+                            score += 0.4
+                
+                # 7. 부분 매칭 보너스
+                for word in user_words:
+                    if len(word) > 2:
+                        for q_word in question_words:
+                            if word in q_word or q_word in word:
+                                score += 0.2
+                
+                if score > best_score:
+                    best_score = score
+                    best_match = qa
+            
+            if best_score >= threshold:
+                return best_match
         except Exception as e:
             print(f"QA 매칭 중 오류: {e}")
         return None
@@ -232,7 +297,7 @@ class AILogic:
         try:
             messages = self.build_conversation_context(user_id, user_message)
             
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=messages,
                 temperature=TEMPERATURE,

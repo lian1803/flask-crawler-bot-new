@@ -18,10 +18,10 @@ def check_excel_structure():
             print(f"\n=== {sheet_name} 시트 ===")
             ws = wb[sheet_name]
             
-            # 첫 5행 확인
-            for row_num in range(1, min(6, ws.max_row + 1)):
+            # 첫 3행만 확인 (간단하게)
+            for row_num in range(1, min(4, ws.max_row + 1)):
                 row_data = []
-                for col_num in range(1, min(6, ws.max_column + 1)):
+                for col_num in range(1, min(4, ws.max_column + 1)):
                     cell_value = ws.cell(row=row_num, column=col_num).value
                     row_data.append(str(cell_value) if cell_value is not None else "None")
                 print(f"행 {row_num}: {row_data}")
