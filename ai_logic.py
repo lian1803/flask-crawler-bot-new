@@ -205,6 +205,7 @@ class AILogic:
         """메시지에서 날짜 추출"""
         today = datetime.now()
         
+        # 상대적 날짜 표현
         if "오늘" in text:
             return today.strftime("%Y-%m-%d")
         if "내일" in text:
@@ -213,25 +214,57 @@ class AILogic:
             return (today - timedelta(days=1)).strftime("%Y-%m-%d")
         if "모레" in text:
             return (today + timedelta(days=2)).strftime("%Y-%m-%d")
+        if "글피" in text:
+            return (today + timedelta(days=3)).strftime("%Y-%m-%d")
         
-        # "5월 20일", "5/20" 같은 패턴 찾기
-        match = re.search(r'(\d{1,2})[월/\s](\d{1,2})일?', text)
+        # "5월 20일", "5/20" 같은 패턴 찾기 (더 정확한 패턴)
+        match = re.search(r'(\d{1,2})[월\s/](\d{1,2})일?', text)
         if match:
             month, day = map(int, match.groups())
-            return today.replace(month=month, day=day).strftime("%Y-%m-%d")
+            # 현재 연도 기준으로 날짜 생성
+            try:
+                target_date = today.replace(month=month, day=day)
+                return target_date.strftime("%Y-%m-%d")
+            except ValueError:
+                # 잘못된 날짜인 경우 None 반환
+                return None
+        
+        # "2024년 5월 20일" 같은 패턴 찾기
+        match = re.search(r'(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일?', text)
+        if match:
+            year, month, day = map(int, match.groups())
+            try:
+                target_date = datetime(year, month, day)
+                return target_date.strftime("%Y-%m-%d")
+            except ValueError:
+                return None
         
         return None
     
     def get_meal_info(self, date: str) -> str:
         """식단 정보 조회"""
-        weekday = datetime.strptime(date, "%Y-%m-%d").weekday()
-        if weekday >= 5:  # 주말
-            return f"{date}는 주말(토/일)이라 급식이 없습니다."
-        
-        menu = self.db.get_meal_info(date)
-        if menu:
-            return f"{date} 중식 메뉴입니다:\n\n{menu}"
-        return f"{date}에는 식단 정보가 없습니다."
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d")
+            weekday = target_date.weekday()
+            
+            # 주말 체크
+            if weekday >= 5:  # 토요일(5), 일요일(6)
+                weekday_names = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+                return f"{date}({weekday_names[weekday]})는 주말이라 급식이 없습니다."
+            
+            # 실제 급식 데이터 조회
+            menu = self.db.get_meal_info(date)
+            if menu:
+                weekday_names = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+                return f"{date}({weekday_names[weekday]}) 중식 메뉴입니다:\n\n{menu}"
+            else:
+                weekday_names = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+                return f"{date}({weekday_names[weekday]})에는 식단 정보가 아직 등록되지 않았습니다."
+                
+        except ValueError as e:
+            return f"날짜 형식 오류: {date}"
+        except Exception as e:
+            return f"식단 정보 조회 중 오류가 발생했습니다: {str(e)}"
     
     def get_notices_info(self) -> str:
         """공지사항 정보 조회"""
@@ -262,18 +295,19 @@ class AILogic:
         
         # 1. 식단 관련 질문 확인
         if any(keyword in user_message for keyword in ["급식", "식단", "밥", "점심", "메뉴"]):
-            # "오늘의 급식" 같은 일반적인 질문은 DB에서 답변
-            if "오늘" in user_message or "급식" in user_message:
-                qa_match = self.find_qa_match(user_message)
-                if qa_match:
-                    response = qa_match['answer']
-                    self.db.save_conversation(user_id, user_message, response)
-                    return True, response
-            
-            # 구체적인 날짜가 있는 경우에만 실제 DB 조회
+            # 급식 관련 질문에서만 날짜 추출 (오늘, 내일, 어제, 모레 등)
             date = self.get_date_from_message(user_message)
+            
+            # 날짜가 명시된 경우 (오늘, 내일, 어제, 모레, 구체적 날짜)
             if date:
                 response = self.get_meal_info(date)
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 날짜가 명시되지 않은 급식 관련 질문은 QA 데이터베이스에서 답변
+            qa_match = self.find_qa_match(user_message)
+            if qa_match:
+                response = qa_match['answer']
                 self.db.save_conversation(user_id, user_message, response)
                 return True, response
         
