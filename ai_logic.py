@@ -52,22 +52,16 @@ class AILogic:
 - 주요 서비스: 급식 정보, 공지사항, 학교 생활 안내"""
     
     def build_conversation_context(self, user_id: str, current_message: str) -> List[Dict]:
-        """대화 컨텍스트 구축"""
-        # 학교 데이터베이스 정보 가져오기
-        qa_data = self.db.get_qa_data()
-        school_info = "와석초등학교 관련 정보:\n"
-        
-        for qa in qa_data[:10]:  # 최대 10개 QA 정보만 포함
-            school_info += f"Q: {qa['question']}\nA: {qa['answer']}\n\n"
-        
-        system_prompt = self.get_system_prompt() + "\n\n" + school_info
+        """대화 컨텍스트 구축 (최적화된 버전)"""
+        # 간단한 시스템 프롬프트만 사용
+        system_prompt = self.get_system_prompt()
         
         messages = [{"role": "system", "content": system_prompt}]
         
-        # 최근 대화 히스토리 가져오기
-        history = self.db.get_conversation_history(user_id, limit=3)
+        # 최근 대화 히스토리는 1개만 가져오기 (성능 향상)
+        history = self.db.get_conversation_history(user_id, limit=1)
         
-        for conv in reversed(history):  # 시간순으로 정렬
+        for conv in reversed(history):
             messages.append({"role": "user", "content": conv['message']})
             messages.append({"role": "assistant", "content": conv['response']})
         
@@ -127,7 +121,7 @@ class AILogic:
         return has_school_keyword or has_question_pattern
 
     def find_qa_match(self, user_message: str, threshold: float = 0.15) -> Optional[Dict]:
-        """QA 데이터베이스에서 유사한 질문 찾기 (향상된 키워드 기반)"""
+        """QA 데이터베이스에서 유사한 질문 찾기 (최적화된 버전)"""
         if not self.qa_data:
             return None
         
@@ -136,60 +130,44 @@ class AILogic:
             best_match = None
             best_score = 0
             
+            # 빠른 매칭을 위해 중요 키워드 우선 확인
+            important_keywords = [
+                '상담', '방과후', '급식', '학교폭력', '등하교', '전학', '결석',
+                '유치원', '초등', '학교', '학부모', '학생', '선생님', '교사'
+            ]
+            
+            # 중요 키워드가 있는 QA만 먼저 확인
+            priority_qa = []
             for qa in self.qa_data:
                 question_lower = qa['question'].lower()
+                for keyword in important_keywords:
+                    if keyword in user_message_lower and keyword in question_lower:
+                        priority_qa.append(qa)
+                        break
+            
+            # 우선순위 QA가 있으면 그것만 확인, 없으면 전체 확인
+            qa_list = priority_qa if priority_qa else self.qa_data[:20]  # 최대 20개만 확인
+            
+            for qa in qa_list:
+                question_lower = qa['question'].lower()
                 
-                # 1. 기본 키워드 매칭 점수
+                # 간단한 키워드 매칭 점수
                 score = 0
                 user_words = set(user_message_lower.split())
                 question_words = set(question_lower.split())
                 common_words = user_words & question_words
-                score += len(common_words) * 0.4
+                score += len(common_words) * 0.5
                 
-                # 2. 부분 문자열 매칭 (더 관대하게)
-                for word in user_words:
-                    if len(word) > 1 and word in question_lower:
-                        score += 0.3
-                
-                # 3. 중요 키워드 가중치
-                important_keywords = [
-                    '상담', '방과후', '급식', '학교폭력', '등하교', '전학', '결석',
-                    '유치원', '초등', '학교', '학부모', '학생', '선생님', '교사',
-                    '시간', '언제', '어디서', '어떻게', '신청', '문의', '안내'
-                ]
+                # 중요 키워드 가중치
                 for keyword in important_keywords:
                     if keyword in user_message_lower and keyword in question_lower:
-                        score += 0.6
+                        score += 0.8
+                        break
                 
-                # 4. 카테고리별 특화 키워드
-                category_keywords = {
-                    '초등': ['학년', '반', '교실', '수업', '하교', '등교'],
-                    '유치원': ['유치원', '원아', '원생', '하원', '등원'],
-                    '첨부파일': ['이미지', '파일', '참조', '첨부', '사진']
-                }
-                
-                for category, keywords in category_keywords.items():
-                    if qa.get('category') == category:
-                        for keyword in keywords:
-                            if keyword in user_message_lower:
-                                score += 0.4
-                
-                # 5. 문장 길이 보정 (짧은 질문에 유리하게)
-                if len(user_words) <= 3:
-                    score += 0.3
-                
-                # 6. 단일 키워드 매칭 (매우 짧은 질문)
-                if len(user_words) == 1:
-                    for word in user_words:
-                        if word in question_lower:
-                            score += 0.4
-                
-                # 7. 부분 매칭 보너스
+                # 부분 문자열 매칭 (간단하게)
                 for word in user_words:
-                    if len(word) > 2:
-                        for q_word in question_words:
-                            if word in q_word or q_word in word:
-                                score += 0.2
+                    if len(word) > 2 and word in question_lower:
+                        score += 0.3
                 
                 if score > best_score:
                     best_score = score
@@ -282,7 +260,7 @@ class AILogic:
         return result
     
     def process_message(self, user_message: str, user_id: str) -> Tuple[bool, str]:
-        """메인 메시지 처리 로직"""
+        """메인 메시지 처리 로직 (최적화된 버전)"""
         print(f"사용자 메시지: {user_message}")
         
         # 금지된 내용 확인
@@ -293,7 +271,7 @@ class AILogic:
         if not self.is_school_related(user_message):
             return False, "와석초등학교 관련 질문에만 답변할 수 있습니다."
         
-        # 1. 식단 관련 질문 확인
+        # 1. 식단 관련 질문 확인 (우선순위 높음)
         if any(keyword in user_message for keyword in ["급식", "식단", "밥", "점심", "메뉴"]):
             # 급식 관련 질문에서만 날짜 추출 (오늘, 내일, 어제, 모레 등)
             date = self.get_date_from_message(user_message)
@@ -317,7 +295,7 @@ class AILogic:
             self.db.save_conversation(user_id, user_message, response)
             return True, response
         
-        # 3. QA 데이터베이스에서 유사한 질문 찾기
+        # 3. QA 데이터베이스에서 유사한 질문 찾기 (우선순위 높음)
         qa_match = self.find_qa_match(user_message)
         if qa_match:
             response = qa_match['answer']
@@ -327,29 +305,43 @@ class AILogic:
             self.db.save_conversation(user_id, user_message, response)
             return True, response
         
-        # 4. OpenAI를 통한 일반적인 응답
+        # 4. 간단한 키워드 기반 답변 (OpenAI 호출 대신)
+        simple_responses = {
+            "안녕": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            "도움": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
+            "감사": "도움이 되어서 기쁩니다! 다른 질문이 있으시면 언제든 말씀해주세요.",
+            "고마워": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요."
+        }
+        
+        for keyword, response in simple_responses.items():
+            if keyword in user_message:
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+        
+        # 5. OpenAI를 통한 응답 (마지막 수단, 타임아웃 방지를 위해 간단하게)
         try:
-            messages = self.build_conversation_context(user_id, user_message)
+            # 간단한 프롬프트만 사용
+            simple_prompt = f"와석초등학교 챗봇입니다. 다음 질문에 대해 간단하고 친근하게 답변해주세요: {user_message}"
             
             response = openai.chat.completions.create(
                 model=OPENAI_MODEL,
-                messages=messages,
-                temperature=TEMPERATURE,
-                max_tokens=MAX_TOKENS,
-                top_p=TOP_P
+                messages=[{"role": "user", "content": simple_prompt}],
+                temperature=0.7,
+                max_tokens=100,  # 토큰 수 줄임
+                top_p=1.0
             )
             
             ai_response = response.choices[0].message.content.strip()
             
             # 응답이 너무 길면 자르기
-            if len(ai_response) > 200:
-                ai_response = ai_response[:200] + "..."
+            if len(ai_response) > 150:
+                ai_response = ai_response[:150] + "..."
             
             self.db.save_conversation(user_id, user_message, ai_response)
             return True, ai_response
             
         except Exception as e:
             print(f"OpenAI 처리 중 오류: {e}")
-            fallback_response = "죄송합니다. 현재 서비스에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요."
+            fallback_response = "죄송합니다. 해당 질문에 대한 답변을 찾을 수 없습니다. 다른 질문을 해주세요."
             self.db.save_conversation(user_id, user_message, fallback_response)
             return False, fallback_response 
