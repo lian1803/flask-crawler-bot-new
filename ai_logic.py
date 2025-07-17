@@ -571,36 +571,108 @@ class AILogic:
     def add_image_to_response(self, response: str, qa_match: Dict) -> dict:
         """이미지 첨부 응답에 실제 이미지 URL 추가 (카카오톡 챗봇용)"""
         try:
-            # 질문 카테고리에 따른 이미지 매핑
+            # 질문 카테고리에 따른 이미지 매핑 (실제 이미지 파일 사용)
             image_mapping = {
                 "학사일정": {
-                    "url": "https://pajuwaseok-e.goepj.kr/pajuwaseok-e/na/ntt/selectNttInfo.do?mi=8416&bbsId=5770&nttSn=1256416",
+                    "url": "/static/images/그림1.jpg",
                     "alt": "학사일정"
                 },
                 "교실 배치도": {
-                    "url": "https://pajuwaseok-e.goepj.kr/pajuwaseok-e/na/ntt/selectNttInfo.do?mi=8416&bbsId=5770&nttSn=1256417",
+                    "url": "/static/images/그림2.png",
                     "alt": "교실 배치도"
                 },
                 "정차대": {
-                    "url": "https://pajuwaseok-e.goepj.kr/pajuwaseok-e/na/ntt/selectNttInfo.do?mi=8416&bbsId=5770&nttSn=1256418",
+                    "url": "/static/images/그림3.png",
                     "alt": "정차대 안내"
                 },
                 "학교시설": {
-                    "url": "https://pajuwaseok-e.goepj.kr/pajuwaseok-e/na/ntt/selectNttInfo.do?mi=8416&bbsId=5770&nttSn=1256419",
+                    "url": "/static/images/그림4.png",
                     "alt": "학교시설 이용시간"
+                },
+                "급식": {
+                    "url": "/static/images/그림5.png",
+                    "alt": "급식 정보"
+                },
+                "방과후": {
+                    "url": "/static/images/그림6.jpg",
+                    "alt": "방과후 프로그램"
+                },
+                "상담": {
+                    "url": "/static/images/그림7.png",
+                    "alt": "상담 안내"
+                },
+                "전학": {
+                    "url": "/static/images/그림8.png",
+                    "alt": "전학 안내"
+                },
+                "유치원": {
+                    "url": "/static/images/그림9.jpg",
+                    "alt": "유치원 안내"
+                },
+                "결석": {
+                    "url": "/static/images/그림10.png",
+                    "alt": "결석 신고 안내"
+                },
+                "등하교": {
+                    "url": "/static/images/그림11.png",
+                    "alt": "등하교 안내"
+                },
+                "체육관": {
+                    "url": "/static/images/그림12.png",
+                    "alt": "체육관 이용"
+                },
+                "도서관": {
+                    "url": "/static/images/그림13.png",
+                    "alt": "도서관 이용"
+                },
+                "보건실": {
+                    "url": "/static/images/그림14.png",
+                    "alt": "보건실 안내"
+                },
+                "컴퓨터실": {
+                    "url": "/static/images/그림15.png",
+                    "alt": "컴퓨터실 안내"
+                },
+                "음악실": {
+                    "url": "/static/images/그림16.png",
+                    "alt": "음악실 안내"
                 }
             }
             
-            # 질문 내용에 따른 이미지 선택
+            # 질문 내용에 따른 이미지 선택 (확장된 카테고리)
             question_lower = qa_match['question'].lower()
             
-            if "학사일정" in response or "개학" in question_lower:
+            if "학사일정" in response or "개학" in question_lower or "방학" in question_lower:
                 image_info = image_mapping["학사일정"]
             elif "교실" in question_lower or "배치" in question_lower:
                 image_info = image_mapping["교실 배치도"]
-            elif "정차" in question_lower or "등하교" in question_lower:
+            elif "정차" in question_lower or "버스" in question_lower:
                 image_info = image_mapping["정차대"]
-            elif "시설" in question_lower or "체육관" in question_lower:
+            elif "급식" in question_lower or "식단" in question_lower or "밥" in question_lower or "점심" in question_lower:
+                image_info = image_mapping["급식"]
+            elif "방과후" in question_lower or "늘봄" in question_lower or "돌봄" in question_lower:
+                image_info = image_mapping["방과후"]
+            elif "상담" in question_lower or "문의" in question_lower:
+                image_info = image_mapping["상담"]
+            elif "전학" in question_lower or "전입" in question_lower or "전출" in question_lower:
+                image_info = image_mapping["전학"]
+            elif "유치원" in question_lower or "유아" in question_lower:
+                image_info = image_mapping["유치원"]
+            elif "결석" in question_lower or "출석" in question_lower:
+                image_info = image_mapping["결석"]
+            elif "등하교" in question_lower or "등교" in question_lower or "하교" in question_lower:
+                image_info = image_mapping["등하교"]
+            elif "체육관" in question_lower or "운동장" in question_lower:
+                image_info = image_mapping["체육관"]
+            elif "도서관" in question_lower or "도서실" in question_lower:
+                image_info = image_mapping["도서관"]
+            elif "보건실" in question_lower or "보건" in question_lower:
+                image_info = image_mapping["보건실"]
+            elif "컴퓨터실" in question_lower or "컴퓨터" in question_lower:
+                image_info = image_mapping["컴퓨터실"]
+            elif "음악실" in question_lower or "음악" in question_lower:
+                image_info = image_mapping["음악실"]
+            elif "시설" in question_lower:
                 image_info = image_mapping["학교시설"]
             else:
                 # 기본적으로 학사일정 이미지 사용
@@ -609,13 +681,37 @@ class AILogic:
             # 카카오톡 챗봇용 이미지 응답 구조
             # response에서 "이미지 파일 첨부" 또는 "이미지 파일 참조" 텍스트를 실제 설명으로 변경
             if "이미지 파일 첨부" in response or "이미지 파일 참조" in response:
-                if "학사일정" in question_lower or "개학" in question_lower:
+                if "학사일정" in question_lower or "개학" in question_lower or "방학" in question_lower:
                     text = "와석초등학교 학사일정입니다. 아래 이미지를 참고해주세요."
                 elif "교실" in question_lower or "배치" in question_lower:
                     text = "와석초등학교 교실 배치도입니다. 아래 이미지를 참고해주세요."
-                elif "정차" in question_lower or "등하교" in question_lower:
+                elif "정차" in question_lower or "버스" in question_lower:
                     text = "와석초등학교 정차대 안내입니다. 아래 이미지를 참고해주세요."
-                elif "시설" in question_lower or "체육관" in question_lower:
+                elif "급식" in question_lower or "식단" in question_lower or "밥" in question_lower or "점심" in question_lower:
+                    text = "와석초등학교 급식 정보입니다. 아래 이미지를 참고해주세요."
+                elif "방과후" in question_lower or "늘봄" in question_lower or "돌봄" in question_lower:
+                    text = "와석초등학교 방과후 프로그램 안내입니다. 아래 이미지를 참고해주세요."
+                elif "상담" in question_lower or "문의" in question_lower:
+                    text = "와석초등학교 상담 안내입니다. 아래 이미지를 참고해주세요."
+                elif "전학" in question_lower or "전입" in question_lower or "전출" in question_lower:
+                    text = "와석초등학교 전학 안내입니다. 아래 이미지를 참고해주세요."
+                elif "유치원" in question_lower or "유아" in question_lower:
+                    text = "와석초등학교 유치원 안내입니다. 아래 이미지를 참고해주세요."
+                elif "결석" in question_lower or "출석" in question_lower:
+                    text = "와석초등학교 결석 신고 안내입니다. 아래 이미지를 참고해주세요."
+                elif "등하교" in question_lower or "등교" in question_lower or "하교" in question_lower:
+                    text = "와석초등학교 등하교 안내입니다. 아래 이미지를 참고해주세요."
+                elif "체육관" in question_lower or "운동장" in question_lower:
+                    text = "와석초등학교 체육관 이용 안내입니다. 아래 이미지를 참고해주세요."
+                elif "도서관" in question_lower or "도서실" in question_lower:
+                    text = "와석초등학교 도서관 이용 안내입니다. 아래 이미지를 참고해주세요."
+                elif "보건실" in question_lower or "보건" in question_lower:
+                    text = "와석초등학교 보건실 안내입니다. 아래 이미지를 참고해주세요."
+                elif "컴퓨터실" in question_lower or "컴퓨터" in question_lower:
+                    text = "와석초등학교 컴퓨터실 안내입니다. 아래 이미지를 참고해주세요."
+                elif "음악실" in question_lower or "음악" in question_lower:
+                    text = "와석초등학교 음악실 안내입니다. 아래 이미지를 참고해주세요."
+                elif "시설" in question_lower:
                     text = "와석초등학교 시설 이용시간입니다. 아래 이미지를 참고해주세요."
                 else:
                     text = "와석초등학교 관련 정보입니다. 아래 이미지를 참고해주세요."
