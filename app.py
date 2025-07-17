@@ -105,9 +105,9 @@ def extract_message(request):
         exception_handler(e)
         return None
 
-def create_kakao_response(message):
+def create_kakao_response(message, quick_replies=None):
     """카카오톡 응답 형식 생성"""
-    return {
+    response = {
         "version": "2.0",
         "template": {
             "outputs": [
@@ -119,6 +119,12 @@ def create_kakao_response(message):
             ]
         }
     }
+    
+    # QuickReplies가 있으면 추가
+    if quick_replies:
+        response["template"]["outputs"][0]["simpleText"]["quickReplies"] = quick_replies
+    
+    return response
 
 def create_quick_replies(category=None):
     """퀵 리플라이 버튼 생성 (단계별)"""
@@ -364,11 +370,9 @@ def webhook():
             kakao_response = create_kakao_response(text)
         # 첫 인사나 일반적인 질문인 경우 메인 메뉴 제공
         elif any(keyword in user_message for keyword in ["안녕", "안녕하세요", "안녕!", "안녕~", "도움", "도움말", "무엇을", "뭐해", "뭐하고 있어"]):
-            kakao_response = create_kakao_response(text)
-            kakao_response["template"]["outputs"][0]["simpleText"]["quickReplies"] = create_quick_replies(None)  # 메인 메뉴
+            kakao_response = create_kakao_response(text, create_quick_replies(None))  # 메인 메뉴
         else:
-            kakao_response = create_kakao_response(text)
-            kakao_response["template"]["outputs"][0]["simpleText"]["quickReplies"] = create_quick_replies(quick_replies_category)
+            kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category))
         
         return jsonify(kakao_response)
         
