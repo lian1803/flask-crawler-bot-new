@@ -65,17 +65,28 @@ def extract_message(request):
         body = request.get_json()
         print(f"받은 요청 데이터: {body}")
         
-        # 카카오톡 챗봇 표준 형식 (수정)
-        if body and 'action' in body and 'params' in body['action']:
+        # 카카오톡 챗봇 v1.0 형식 (실제 카카오톡 챗봇 빌더 형식)
+        if body and 'userRequest' in body:
+            print(f"userRequest 내용: {body['userRequest']}")
+            if 'utterance' in body['userRequest']:
+                utterance = body['userRequest']['utterance']
+                print(f"userRequest.utterance 추출: {utterance}")
+                return utterance
+            else:
+                print("userRequest에 utterance가 없습니다")
+        
+        # 카카오톡 챗봇 빌더 테스트 형식
+        elif body and 'action' in body and 'params' in body['action']:
+            print(f"action.params 내용: {body['action']['params']}")
             # 카카오톡 챗봇 v2.0 형식
             if 'utterance' in body['action']['params']:
-                return body['action']['params']['utterance']
+                utterance = body['action']['params']['utterance']
+                print(f"utterance 추출: {utterance}")
+                return utterance
             elif 'message' in body['action']['params']:
-                return body['action']['params']['message']
-        
-        # 카카오톡 챗봇 v1.0 형식
-        elif body and 'userRequest' in body:
-            return body['userRequest']['utterance']
+                message = body['action']['params']['message']
+                print(f"message 추출: {message}")
+                return message
         
         # machaao 형식
         elif body and 'raw' in body:
@@ -91,11 +102,15 @@ def extract_message(request):
         
         # 일반 JSON 형식
         elif body and 'message' in body:
-            return body['message']
+            message = body['message']
+            print(f"body.message 추출: {message}")
+            return message
         
         # 폼 데이터
         elif request.form and 'message' in request.form:
-            return request.form['message']
+            message = request.form['message']
+            print(f"form.message 추출: {message}")
+            return message
         
         print(f"메시지를 찾을 수 없음: {body}")
         return None
