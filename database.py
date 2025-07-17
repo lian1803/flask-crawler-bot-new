@@ -88,14 +88,23 @@ class DatabaseManager:
             for row in results
         ]
     
-    def save_conversation(self, user_id: str, message: str, response: str):
+    def save_conversation(self, user_id: str, message: str, response):
         """대화 히스토리 저장"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
+        # response가 dict인 경우 텍스트로 변환
+        if isinstance(response, dict):
+            if response.get("type") == "image":
+                response_text = f"[이미지] {response.get('text', '')}"
+            else:
+                response_text = response.get("text", str(response))
+        else:
+            response_text = str(response)
+        
         cursor.execute(
             'INSERT INTO conversation_history (user_id, message, response) VALUES (?, ?, ?)',
-            (user_id, message, response)
+            (user_id, message, response_text)
         )
         
         conn.commit()
