@@ -13,6 +13,31 @@ def get_kst_now():
     """현재 한국 시간 반환"""
     return datetime.now(KST)
 
+def extract_link_from_text(text: str):
+    """텍스트에서 첫 번째 URL을 추출하고, 본문과 링크를 분리"""
+    url_pattern = r'(https?://[\w\-./?%&=:#@]+)'
+    match = re.search(url_pattern, text)
+    if match:
+        url = match.group(1)
+        # 본문에서 URL 제거(공백도 정리)
+        text_wo_url = text.replace(url, '').strip()
+        # 본문 끝에 불필요한 구두점/공백 제거
+        text_wo_url = re.sub(r'[\s\-:·,]+$', '', text_wo_url)
+        
+        # 본문이 비어있으면 기본 안내문 추가
+        if not text_wo_url:
+            if "ktbookmall.com" in url:
+                text_wo_url = "교과서 구매는 아래 링크에서 가능합니다."
+            elif "goepj.kr" in url:
+                text_wo_url = "자세한 내용은 아래 링크에서 확인하실 수 있습니다."
+            elif "docs.google.com" in url:
+                text_wo_url = "학사일정은 아래 링크에서 확인하실 수 있습니다."
+            else:
+                text_wo_url = "자세한 내용은 아래 링크를 참고해주세요."
+        
+        return text_wo_url, url
+    return text, None
+
 class AILogic:
     def __init__(self):
         openai.api_key = OPENAI_API_KEY
@@ -533,17 +558,17 @@ class AILogic:
         
         return None
     
-    def process_message(self, user_message: str, user_id: str) -> Tuple[bool, str]:
+    def process_message(self, user_message: str, user_id: str) -> Tuple[bool, dict]:
         """메인 메시지 처리 로직 (최적화된 버전)"""
         print(f"사용자 메시지: {user_message}")
         
         # 금지된 내용 확인
         if self.is_banned_content(user_message):
-            return False, "부적절한 내용이 포함되어 있습니다. 다른 질문을 해주세요."
+            return False, {"type": "text", "text": "부적절한 내용이 포함되어 있습니다. 다른 질문을 해주세요."}
         
         # 와석초 관련 질문인지 판별
         if not self.is_school_related(user_message):
-            return False, "와석초등학교 관련 질문에만 답변할 수 있습니다."
+            return False, {"type": "text", "text": "와석초등학교 관련 질문에만 답변할 수 있습니다."}
         
         # 1. 식단 관련 질문 확인 (우선순위 높음)
         if any(keyword in user_message for keyword in ["급식", "식단", "밥", "점심", "메뉴"]):
@@ -554,27 +579,28 @@ class AILogic:
             if date:
                 response = self.get_meal_info(date)
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                return True, {"type": "text", "text": response}  # 급식은 링크 없음
             
             # 날짜가 명시되지 않은 급식 관련 질문은 "오늘"로 간주하여 실시간 조회
             if any(keyword in user_message for keyword in ["오늘", "지금", "현재", "이번", "이번주"]):
                 today = get_kst_now().strftime("%Y-%m-%d")
                 response = self.get_meal_info(today)
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                return True, {"type": "text", "text": response}  # 급식은 링크 없음
             
             # 그 외 급식 관련 질문은 QA 데이터베이스에서 답변
             qa_match = self.find_qa_match(user_message)
             if qa_match:
-                response = qa_match['answer']
-                self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                answer = qa_match['answer']
+                # 급식은 링크 없음
+                self.db.save_conversation(user_id, user_message, answer)
+                return True, {"type": "text", "text": answer}
         
         # 2. 공지사항 관련 질문 확인
         if any(keyword in user_message for keyword in ["공지", "알림", "소식", "뉴스"]):
             response = self.get_notices_info()
             self.db.save_conversation(user_id, user_message, response)
-            return True, response
+            return True, {"type": "text", "text": response}
         
         # 3. 유치원 관련 질문 특별 처리 (새로 추가)
         if "유치원" in user_message:
@@ -584,43 +610,64 @@ class AILogic:
             if any(keyword in user_message_lower for keyword in ["운영시간", "운영 시간", "시간", "몇시"]):
                 response = "교육과정 시간은 오전 9시~13시 30분까지\n방과후과정은 오전 8시~19시까지"
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 유치원 교육비 관련
             elif any(keyword in user_message_lower for keyword in ["교육비", "비용", "얼마", "돈"]):
                 response = "병설유치원은 입학비, 방과후과정비, 교육비, 현장학습비, 방과후특성화비 모두 무상으로 지원됩니다."
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 유치원 담임 선생님 연락처
             elif any(keyword in user_message_lower for keyword in ["담임", "연락처", "전화번호", "연락"]):
                 response = "바른반: 070-7525-7763\n슬기반 070-7525-7755\n꿈반 070-7525-7849\n자람반 070-7525-7560\n원무실 031-957-8715"
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 유치원 개학일
             elif "개학일" in user_message_lower:
                 response = "유치원 개학일은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 3월 초에 1학기 개학이, 8월 말~9월 초에 2학기 개학이 진행됩니다. 정확한 개학일은 원무실(031-957-8715)로 문의해주세요."
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 유치원 방학일
             elif "방학일" in user_message_lower or "방학" in user_message_lower:
                 response = "유치원 방학은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 7월 말~8월 초에 여름방학이, 12월 말~2월 말에 겨울방학이 진행됩니다. 정확한 방학일은 원무실(031-957-8715)로 문의해주세요."
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 유치원 졸업식
             elif "졸업식" in user_message_lower:
                 response = "유치원 졸업식은 보통 2월 말에 진행됩니다. 정확한 일정은 학사일정을 참고해주시거나 원무실(031-957-8715)로 문의해주세요."
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 유치원 행사일
             elif "행사일" in user_message_lower or "행사" in user_message_lower:
                 response = "유치원에서는 다양한 행사가 진행됩니다. 입학식, 졸업식, 현장학습, 학부모 참여수업 등이 있으며, 정확한 일정은 학사일정을 참고해주시거나 원무실(031-957-8715)로 문의해주세요."
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
         
         # 4. 초등학교 관련 질문 특별 처리 (새로 추가)
         elif "초등학교" in user_message or ("초등" in user_message and "유치원" not in user_message):
@@ -630,25 +677,37 @@ class AILogic:
             if "개학일" in user_message_lower:
                 response = "개학일은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 3월 초에 1학기 개학이, 8월 말~9월 초에 2학기 개학이 진행됩니다. 정확한 개학일은 교무실(031-957-8715)로 문의해주세요. 개학일에는 학생들의 건강상태를 확인하고 안전한 학교생활을 위한 안내가 이루어집니다. 더 궁금하신 점이 있으시면 언제든 말씀해주세요!"
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 초등학교 방학일
             elif "방학일" in user_message_lower or "방학" in user_message_lower:
                 response = "방학은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 7월 말~8월 초에 여름방학이, 12월 말~2월 말에 겨울방학이 진행됩니다. 정확한 방학일은 교무실(031-957-8715)로 문의해주세요."
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 초등학교 시험일
             elif "시험일" in user_message_lower or "시험" in user_message_lower:
                 response = "시험일은 학년별로 다르며, 보통 1학기 중간고사(5월), 1학기 기말고사(7월), 2학기 중간고사(10월), 2학기 기말고사(12월)에 진행됩니다. 정확한 시험일은 담임선생님께 문의해주세요."
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
             
             # 초등학교 행사일
             elif "행사일" in user_message_lower or "행사" in user_message_lower:
                 response = "초등학교에서는 다양한 행사가 진행됩니다. 입학식, 졸업식, 체육대회, 학예회, 현장학습 등이 있으며, 정확한 일정은 학사일정을 참고해주시거나 교무실(031-957-8715)로 문의해주세요."
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
         
         # 5. 간단한 키워드 기반 답변 (우선순위 높음) - 더 상세하고 친근하게 개선
         simple_responses = {
@@ -688,25 +747,22 @@ class AILogic:
         for keyword, response in simple_responses.items():
             if keyword in user_message:
                 self.db.save_conversation(user_id, user_message, response)
-                return True, response
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
         
         # 6. QA 데이터베이스에서 유사한 질문 찾기
         qa_match = self.find_qa_match(user_message)
         if qa_match:
-            response = qa_match['answer']
-            
-            # 이미지 첨부 응답 처리
-            if "사진 첨부" in response or "이미지 파일 첨부" in response or "이미지 파일 참조" in response:
-                response = self.add_image_to_response(response, qa_match)
-            else:
-                response = {"type": "text", "text": response}
-            
+            answer = qa_match['answer']
+            # 답변에서 링크 추출(급식 제외)
+            text, url = extract_link_from_text(answer)
+            response = {"type": "text", "text": text}
+            if url:
+                response["link"] = url
             if qa_match.get('additional_answer'):
-                if isinstance(response, dict):
-                    response["text"] += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
-                else:
-                    response += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
-            
+                response["text"] += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
             self.db.save_conversation(user_id, user_message, response)
             return True, response
         
