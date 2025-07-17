@@ -236,17 +236,17 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 유치원 메뉴
+    # 유치원 메뉴 - 가로 배치
     elif category == "유치원":
         return [
             {
                 "action": "message",
-                "label": "📅 학사일정",
+                "label": "📅 학사",
                 "messageText": "유치원 학사일정"
             },
             {
                 "action": "message",
-                "label": "⏰ 운영시간",
+                "label": "⏰ 시간",
                 "messageText": "유치원 운영시간"
             },
             {
@@ -255,7 +255,8 @@ def create_quick_replies(category=None):
                 "messageText": "유치원 방과후"
             },
             {
-                "action": "📞 상담/문의",
+                "action": "message",
+                "label": "📞 상담",
                 "messageText": "유치원 상담문의"
             },
             {
@@ -265,17 +266,17 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 초등학교 메뉴
+    # 초등학교 메뉴 - 가로 배치
     elif category == "초등학교":
         return [
             {
                 "action": "message",
-                "label": "📅 학사일정",
+                "label": "📅 학사",
                 "messageText": "학사일정"
             },
             {
                 "action": "message",
-                "label": "🍽️ 급식정보",
+                "label": "🍽️ 급식",
                 "messageText": "급식정보"
             },
             {
@@ -285,7 +286,7 @@ def create_quick_replies(category=None):
             },
             {
                 "action": "message",
-                "label": "📞 상담/문의",
+                "label": "📞 상담",
                 "messageText": "상담문의"
             },
             {
@@ -300,27 +301,27 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 유치원 학사일정 세부 카테고리
+    # 유치원 학사일정 세부 카테고리 - 가로 배치
     elif category == "유치원 학사일정":
         return [
             {
                 "action": "message",
-                "label": "🏫 개학일",
+                "label": "🏫 개학",
                 "messageText": "유치원 개학일"
             },
             {
                 "action": "message",
-                "label": "🏖️ 방학일",
+                "label": "🏖️ 방학",
                 "messageText": "유치원 방학일"
             },
             {
                 "action": "message",
-                "label": "🎓 졸업식",
+                "label": "🎓 졸업",
                 "messageText": "유치원 졸업식"
             },
             {
                 "action": "message",
-                "label": "🎉 행사일",
+                "label": "🎉 행사",
                 "messageText": "유치원 행사일"
             },
             {
@@ -330,22 +331,22 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 유치원 운영시간 세부 카테고리
+    # 유치원 운영시간 세부 카테고리 - 가로 배치
     elif category == "유치원 운영시간":
         return [
             {
                 "action": "message",
-                "label": "⏰ 교육과정",
+                "label": "⏰ 교육",
                 "messageText": "유치원 교육과정 시간"
             },
             {
                 "action": "message",
-                "label": "🎨 방과후과정",
+                "label": "🎨 방과후",
                 "messageText": "유치원 방과후과정 시간"
             },
             {
                 "action": "message",
-                "label": "👨‍🏫 교사면담",
+                "label": "👨‍🏫 면담",
                 "messageText": "유치원 교사면담 시간"
             },
             {
@@ -355,7 +356,7 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 유치원 방과후 세부 카테고리
+    # 유치원 방과후 세부 카테고리 - 가로 배치
     elif category == "유치원 방과후":
         return [
             {
@@ -370,7 +371,7 @@ def create_quick_replies(category=None):
             },
             {
                 "action": "message",
-                "label": "📝 신청방법",
+                "label": "📝 신청",
                 "messageText": "유치원 방과후 신청방법"
             },
             {
@@ -380,22 +381,22 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 유치원 상담문의 세부 카테고리
+    # 유치원 상담문의 세부 카테고리 - 가로 배치
     elif category == "유치원 상담문의":
         return [
             {
                 "action": "message",
-                "label": "👨‍🏫 담임상담",
+                "label": "👨‍🏫 담임",
                 "messageText": "유치원 담임상담"
             },
             {
                 "action": "message",
-                "label": "📞 전화번호",
+                "label": "📞 전화",
                 "messageText": "유치원 전화번호"
             },
             {
                 "action": "message",
-                "label": "🔄 입학문의",
+                "label": "🔄 입학",
                 "messageText": "유치원 입학문의"
             },
             {
@@ -405,27 +406,27 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 학사일정 세부 카테고리 (초등학교)
+    # 학사일정 세부 카테고리 (초등학교) - 가로 배치
     elif category == "학사일정":
         return [
             {
                 "action": "message",
-                "label": "🏫 개학일",
+                "label": "🏫 개학",
                 "messageText": "개학일"
             },
             {
                 "action": "message",
-                "label": "🏖️ 방학일",
+                "label": "🏖️ 방학",
                 "messageText": "방학일"
             },
             {
                 "action": "message",
-                "label": "📝 시험일",
+                "label": "📝 시험",
                 "messageText": "시험일"
             },
             {
                 "action": "message",
-                "label": "🎉 행사일",
+                "label": "🎉 행사",
                 "messageText": "행사일"
             },
             {
@@ -435,27 +436,27 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 급식정보 세부 카테고리 (초등학교)
+    # 급식정보 세부 카테고리 (초등학교) - 가로 배치
     elif category == "급식정보":
         return [
             {
                 "action": "message",
-                "label": "🍽️ 오늘 급식",
+                "label": "🍽️ 오늘",
                 "messageText": "오늘 급식 메뉴 알려줘"
             },
             {
                 "action": "message", 
-                "label": "📅 이번주 급식",
+                "label": "📅 이번주",
                 "messageText": "이번주 급식 메뉴 알려줘"
             },
             {
                 "action": "message",
-                "label": "❓ 급식 문의",
+                "label": "❓ 문의",
                 "messageText": "급식 관련 문의"
             },
             {
                 "action": "message",
-                "label": "🍎 알레르기 정보",
+                "label": "🍎 알레르기",
                 "messageText": "급식 알레르기 정보"
             },
             {
@@ -465,27 +466,27 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 방과후 세부 카테고리 (초등학교)
+    # 방과후 세부 카테고리 (초등학교) - 가로 배치
     elif category == "방과후":
         return [
             {
                 "action": "message",
-                "label": "🏠 늘봄교실",
+                "label": "🏠 늘봄",
                 "messageText": "늘봄교실"
             },
             {
                 "action": "message",
-                "label": "🎨 방과후학교",
+                "label": "🎨 방과후",
                 "messageText": "방과후학교"
             },
             {
                 "action": "message",
-                "label": "📝 신청방법",
+                "label": "📝 신청",
                 "messageText": "방과후 신청방법"
             },
             {
                 "action": "message",
-                "label": "⏰ 운영시간",
+                "label": "⏰ 시간",
                 "messageText": "방과후 운영시간"
             },
             {
@@ -495,27 +496,27 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 상담/문의 세부 카테고리 (초등학교)
+    # 상담/문의 세부 카테고리 (초등학교) - 가로 배치
     elif category == "상담문의":
         return [
             {
                 "action": "message",
-                "label": "👨‍🏫 담임상담",
+                "label": "👨‍🏫 담임",
                 "messageText": "담임선생님 상담"
             },
             {
                 "action": "message",
-                "label": "📞 전화번호",
+                "label": "📞 전화",
                 "messageText": "학교 전화번호"
             },
             {
                 "action": "message",
-                "label": "🔄 전학문의",
+                "label": "🔄 전학",
                 "messageText": "전학 문의"
             },
             {
                 "action": "message",
-                "label": "📋 서류발급",
+                "label": "📋 서류",
                 "messageText": "서류 발급 문의"
             },
             {
@@ -525,12 +526,12 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 더보기 세부 카테고리 (초등학교)
+    # 더보기 세부 카테고리 (초등학교) - 가로 배치
     elif category == "더보기":
         return [
             {
                 "action": "message",
-                "label": "🏢 학교시설",
+                "label": "🏢 시설",
                 "messageText": "학교시설"
             },
             {
@@ -545,7 +546,7 @@ def create_quick_replies(category=None):
             },
             {
                 "action": "message",
-                "label": "🏥 보건실",
+                "label": "🏥 보건",
                 "messageText": "보건실"
             },
             {
@@ -555,12 +556,12 @@ def create_quick_replies(category=None):
             },
             {
                 "action": "message",
-                "label": "⏰ 하교시간",
+                "label": "⏰ 하교",
                 "messageText": "O학년 하교 시간 몇시인가요?"
             },
             {
                 "action": "message",
-                "label": "📝 체험학습",
+                "label": "📝 체험",
                 "messageText": "체험학습보고서 양식 어디에 있나요?"
             },
             {
