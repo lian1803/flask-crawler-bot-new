@@ -756,13 +756,20 @@ class AILogic:
         qa_match = self.find_qa_match(user_message)
         if qa_match:
             answer = qa_match['answer']
-            # 답변에서 링크 추출(급식 제외)
-            text, url = extract_link_from_text(answer)
-            response = {"type": "text", "text": text}
-            if url:
-                response["link"] = url
-            if qa_match.get('additional_answer'):
-                response["text"] += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
+            
+            # 이미지가 포함된 답변인지 확인
+            if "이미지" in answer or "사진" in answer or "첨부" in answer:
+                # 이미지 응답 처리
+                response = self.add_image_to_response(answer, qa_match)
+            else:
+                # 일반 텍스트 응답 처리
+                text, url = extract_link_from_text(answer)
+                response = {"type": "text", "text": text}
+                if url:
+                    response["link"] = url
+                if qa_match.get('additional_answer'):
+                    response["text"] += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
+            
             self.db.save_conversation(user_id, user_message, response)
             return True, response
         
@@ -804,68 +811,40 @@ class AILogic:
             # 질문 카테고리에 따른 이미지 매핑 (실제 이미지 파일명 사용)
             image_mapping = {
                 "학사일정": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림1.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image1.jpeg",
                     "alt": "학사일정"
                 },
                 "교실 배치도": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림2.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image2.png",
                     "alt": "교실 배치도"
                 },
                 "정차대": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림3.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image3.png",
                     "alt": "정차대"
                 },
                 "학교시설": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림4.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image4.png",
                     "alt": "학교시설"
                 },
                 "급식": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림5.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image5.png",
                     "alt": "급식"
                 },
                 "방과후": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림6.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image7.png",
                     "alt": "방과후"
                 },
                 "상담": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림7.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image8.png",
                     "alt": "상담"
                 },
                 "전학": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림8.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image9.png",
                     "alt": "전학"
                 },
                 "유치원": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림9.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image10.png",
                     "alt": "유치원"
-                },
-                "경조사": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림10.png",
-                    "alt": "경조사"
-                },
-                "늘봄학교": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림11.png",
-                    "alt": "늘봄학교"
-                },
-                "시설이용": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림12.png",
-                    "alt": "시설이용"
-                },
-                "방과후강좌": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림13.png",
-                    "alt": "방과후강좌"
-                },
-                "정차대위치": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림14.png",
-                    "alt": "정차대위치"
-                },
-                "학사일정상세": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림15.png",
-                    "alt": "학사일정상세"
-                },
-                "전학절차": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림16.png",
-                    "alt": "전학절차"
                 }
             }
             
@@ -875,45 +854,35 @@ class AILogic:
             
             # 카테고리별 우선 매칭
             if category == "유치원":
-                if "경조사" in question_lower or "휴가" in question_lower:
-                    image_info = image_mapping["경조사"]
-                elif "학사일정" in question_lower or "개학" in question_lower or "방학" in question_lower:
-                    image_info = image_mapping["학사일정상세"]
-                else:
-                    image_info = image_mapping["유치원"]
+                image_info = image_mapping["유치원"]
             elif "교실" in question_lower or "배치" in question_lower:
                 image_info = image_mapping["교실 배치도"]
             elif "정차" in question_lower or "버스" in question_lower or "등하교" in question_lower:
-                image_info = image_mapping["정차대위치"]
+                image_info = image_mapping["정차대"]
             elif "급식" in question_lower or "식단" in question_lower or "밥" in question_lower or "점심" in question_lower:
                 image_info = image_mapping["급식"]
             elif "방과후" in question_lower:
-                if "강좌" in question_lower or "요일" in question_lower:
-                    image_info = image_mapping["방과후강좌"]
-                else:
-                    image_info = image_mapping["방과후"]
-            elif "늘봄" in question_lower:
-                image_info = image_mapping["늘봄학교"]
+                image_info = image_mapping["방과후"]
             elif "상담" in question_lower or "문의" in question_lower:
                 image_info = image_mapping["상담"]
             elif "전학" in question_lower or "전입" in question_lower or "전출" in question_lower:
-                image_info = image_mapping["전학절차"]
+                image_info = image_mapping["전학"]
             elif "시설" in question_lower or "이용" in question_lower:
-                image_info = image_mapping["시설이용"]
+                image_info = image_mapping["학교시설"]
             elif "학사일정" in question_lower or "개학" in question_lower or "방학" in question_lower:
-                image_info = image_mapping["학사일정상세"]
+                image_info = image_mapping["학사일정"]
             else:
                 # 기본적으로 학사일정 이미지 사용
                 image_info = image_mapping["학사일정"]
             
             # 응답 텍스트 개선
-            if "이미지 파일 첨부" in response or "이미지 파일 참조" in response:
+            if "이미지 파일 첨부" in response or "이미지 파일 참조" in response or "사진 첨부" in response:
                 # 더 상세하고 친근한 설명으로 변경
                 if "학사일정" in question_lower or "개학" in question_lower or "방학" in question_lower:
                     text = "와석초등학교 학사일정입니다. 📅 아래 이미지에서 정확한 일정을 확인해주세요."
                 elif "교실" in question_lower or "배치" in question_lower:
                     text = "와석초등학교 교실 배치도입니다. 🏫 아래 이미지에서 교실 위치를 확인해주세요."
-                elif "정차" in question_lower or "버스" in question_lower:
+                elif "정차" in question_lower or "버스" in question_lower or "등하교" in question_lower:
                     text = "와석초등학교 정차대 안내입니다. 🚌 아래 이미지에서 정차대 위치를 확인해주세요."
                 elif "급식" in question_lower or "식단" in question_lower:
                     text = "와석초등학교 급식 정보입니다. 🍽️ 아래 이미지에서 급식 메뉴를 확인해주세요."

@@ -550,6 +550,26 @@ def create_quick_replies(category=None):
             },
             {
                 "action": "message",
+                "label": "📚 교과서",
+                "messageText": "교과서 어디서 살 수 있어요?"
+            },
+            {
+                "action": "message",
+                "label": "⏰ 하교시간",
+                "messageText": "O학년 하교 시간 몇시인가요?"
+            },
+            {
+                "action": "message",
+                "label": "📝 체험학습",
+                "messageText": "체험학습보고서 양식 어디에 있나요?"
+            },
+            {
+                "action": "message",
+                "label": "🏖️ 방학식",
+                "messageText": "여름/겨울 방학식은 언제인가요?"
+            },
+            {
+                "action": "message",
                 "label": "⬅️ 뒤로가기",
                 "messageText": "초등학교"
             }
