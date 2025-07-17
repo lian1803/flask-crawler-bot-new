@@ -607,11 +607,26 @@ class AILogic:
                 image_info = image_mapping["학사일정"]
             
             # 카카오톡 챗봇용 이미지 응답 구조
+            # response에서 "이미지 파일 첨부" 텍스트를 실제 설명으로 변경
+            if "이미지 파일 첨부" in response:
+                if "학사일정" in question_lower or "개학" in question_lower:
+                    text = "와석초등학교 학사일정입니다. 아래 이미지를 참고해주세요."
+                elif "교실" in question_lower or "배치" in question_lower:
+                    text = "와석초등학교 교실 배치도입니다. 아래 이미지를 참고해주세요."
+                elif "정차" in question_lower or "등하교" in question_lower:
+                    text = "와석초등학교 정차대 안내입니다. 아래 이미지를 참고해주세요."
+                elif "시설" in question_lower or "체육관" in question_lower:
+                    text = "와석초등학교 시설 이용시간입니다. 아래 이미지를 참고해주세요."
+                else:
+                    text = "와석초등학교 관련 정보입니다. 아래 이미지를 참고해주세요."
+            else:
+                text = response
+            
             return {
                 "type": "image",
                 "imageUrl": image_info["url"],
                 "altText": image_info["alt"],
-                "text": response
+                "text": text
             }
             
         except Exception as e:
