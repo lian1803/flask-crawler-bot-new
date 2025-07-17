@@ -522,7 +522,7 @@ class AILogic:
             response = qa_match['answer']
             
             # 이미지 첨부 응답 처리
-            if "사진 첨부" in response or "이미지 파일 첨부" in response:
+            if "사진 첨부" in response or "이미지 파일 첨부" in response or "이미지 파일 참조" in response:
                 response = self.add_image_to_response(response, qa_match)
             else:
                 response = {"type": "text", "text": response}
@@ -607,8 +607,8 @@ class AILogic:
                 image_info = image_mapping["학사일정"]
             
             # 카카오톡 챗봇용 이미지 응답 구조
-            # response에서 "이미지 파일 첨부" 텍스트를 실제 설명으로 변경
-            if "이미지 파일 첨부" in response:
+            # response에서 "이미지 파일 첨부" 또는 "이미지 파일 참조" 텍스트를 실제 설명으로 변경
+            if "이미지 파일 첨부" in response or "이미지 파일 참조" in response:
                 if "학사일정" in question_lower or "개학" in question_lower:
                     text = "와석초등학교 학사일정입니다. 아래 이미지를 참고해주세요."
                 elif "교실" in question_lower or "배치" in question_lower:
