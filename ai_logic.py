@@ -549,7 +549,14 @@ class AILogic:
                 self.db.save_conversation(user_id, user_message, response)
                 return True, response
             
-            # 날짜가 명시되지 않은 급식 관련 질문은 QA 데이터베이스에서 답변
+            # 날짜가 명시되지 않은 급식 관련 질문은 "오늘"로 간주하여 실시간 조회
+            if any(keyword in user_message for keyword in ["오늘", "지금", "현재", "이번", "이번주"]):
+                today = datetime.now().strftime("%Y-%m-%d")
+                response = self.get_meal_info(today)
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 그 외 급식 관련 질문은 QA 데이터베이스에서 답변
             qa_match = self.find_qa_match(user_message)
             if qa_match:
                 response = qa_match['answer']
