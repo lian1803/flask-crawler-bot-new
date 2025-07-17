@@ -120,25 +120,193 @@ def create_kakao_response(message):
         }
     }
 
-def create_quick_replies():
-    """퀵 리플라이 버튼 생성"""
-    return [
-        {
-            "action": "message",
-            "label": "오늘 급식",
-            "messageText": "오늘 급식 메뉴 알려줘"
-        },
-        {
-            "action": "message", 
-            "label": "공지사항",
-            "messageText": "최신 공지사항 알려줘"
-        },
-        {
-            "action": "message",
-            "label": "도움말",
-            "messageText": "무엇을 도와드릴까요?"
-        }
-    ]
+def create_quick_replies(category=None):
+    """퀵 리플라이 버튼 생성 (단계별)"""
+    
+    # 메인 카테고리 (첫 단계)
+    if category is None:
+        return [
+            {
+                "action": "message",
+                "label": "📅 학사일정",
+                "messageText": "학사일정"
+            },
+            {
+                "action": "message",
+                "label": "🍽️ 급식정보",
+                "messageText": "급식정보"
+            },
+            {
+                "action": "message",
+                "label": "🎨 방과후",
+                "messageText": "방과후"
+            },
+            {
+                "action": "message",
+                "label": "📞 상담/문의",
+                "messageText": "상담문의"
+            },
+            {
+                "action": "message",
+                "label": "📋 더보기",
+                "messageText": "더보기"
+            }
+        ]
+    
+    # 학사일정 세부 카테고리
+    elif category == "학사일정":
+        return [
+            {
+                "action": "message",
+                "label": "🏫 개학일",
+                "messageText": "개학일"
+            },
+            {
+                "action": "message",
+                "label": "🏖️ 방학일",
+                "messageText": "방학일"
+            },
+            {
+                "action": "message",
+                "label": "📝 시험일",
+                "messageText": "시험일"
+            },
+            {
+                "action": "message",
+                "label": "🎉 행사일",
+                "messageText": "행사일"
+            },
+            {
+                "action": "⬅️ 뒤로가기",
+                "messageText": "메인메뉴"
+            }
+        ]
+    
+    # 급식정보 세부 카테고리
+    elif category == "급식정보":
+        return [
+            {
+                "action": "message",
+                "label": "🍽️ 오늘 급식",
+                "messageText": "오늘 급식 메뉴 알려줘"
+            },
+            {
+                "action": "message",
+                "label": "📅 이번주 급식",
+                "messageText": "이번주 급식 메뉴 알려줘"
+            },
+            {
+                "action": "message",
+                "label": "❓ 급식 문의",
+                "messageText": "급식 관련 문의"
+            },
+            {
+                "action": "message",
+                "label": "🍎 알레르기 정보",
+                "messageText": "급식 알레르기 정보"
+            },
+            {
+                "action": "⬅️ 뒤로가기",
+                "messageText": "메인메뉴"
+            }
+        ]
+    
+    # 방과후 세부 카테고리
+    elif category == "방과후":
+        return [
+            {
+                "action": "message",
+                "label": "🏠 늘봄교실",
+                "messageText": "늘봄교실"
+            },
+            {
+                "action": "message",
+                "label": "🎨 방과후학교",
+                "messageText": "방과후학교"
+            },
+            {
+                "action": "message",
+                "label": "📝 신청방법",
+                "messageText": "방과후 신청방법"
+            },
+            {
+                "action": "message",
+                "label": "⏰ 운영시간",
+                "messageText": "방과후 운영시간"
+            },
+            {
+                "action": "⬅️ 뒤로가기",
+                "messageText": "메인메뉴"
+            }
+        ]
+    
+    # 상담/문의 세부 카테고리
+    elif category == "상담문의":
+        return [
+            {
+                "action": "message",
+                "label": "👨‍🏫 담임상담",
+                "messageText": "담임선생님 상담"
+            },
+            {
+                "action": "message",
+                "label": "📞 전화번호",
+                "messageText": "학교 전화번호"
+            },
+            {
+                "action": "message",
+                "label": "🔄 전학문의",
+                "messageText": "전학 문의"
+            },
+            {
+                "action": "message",
+                "label": "📋 서류발급",
+                "messageText": "서류 발급 문의"
+            },
+            {
+                "action": "⬅️ 뒤로가기",
+                "messageText": "메인메뉴"
+            }
+        ]
+    
+    # 더보기 세부 카테고리
+    elif category == "더보기":
+        return [
+            {
+                "action": "message",
+                "label": "🏢 학교시설",
+                "messageText": "학교시설"
+            },
+            {
+                "action": "message",
+                "label": "🚌 등하교",
+                "messageText": "등하교"
+            },
+            {
+                "action": "message",
+                "label": "👶 유치원",
+                "messageText": "유치원"
+            },
+            {
+                "action": "message",
+                "label": "🏥 보건실",
+                "messageText": "보건실"
+            },
+            {
+                "action": "⬅️ 뒤로가기",
+                "messageText": "메인메뉴"
+            }
+        ]
+    
+    # 기본 (메인으로 돌아가기)
+    else:
+        return [
+            {
+                "action": "message",
+                "label": "🏠 메인메뉴",
+                "messageText": "메인메뉴"
+            }
+        ]
 
 @app.route('/', methods=['GET'])
 def root():
@@ -172,8 +340,35 @@ def webhook():
         else:
             text = str(response)
         
-        kakao_response = create_kakao_response(text)
-        kakao_response["template"]["outputs"][0]["simpleText"]["quickReplies"] = create_quick_replies()
+        # 사용자 메시지에 따른 QuickReplies 결정
+        quick_replies_category = None
+        
+        # 메인 카테고리 키워드 확인
+        if user_message in ["학사일정", "급식정보", "방과후", "상담문의", "더보기", "메인메뉴"]:
+            if user_message == "메인메뉴":
+                quick_replies_category = None  # 메인 메뉴
+            else:
+                quick_replies_category = user_message
+        
+        # 특별한 응답 메시지들 (QuickReplies 없이)
+        special_responses = [
+            "오늘 급식 메뉴 알려줘", "이번주 급식 메뉴 알려줘", "급식 관련 문의", 
+            "급식 알레르기 정보", "개학일", "방학일", "시험일", "행사일",
+            "늘봄교실", "방과후학교", "방과후 신청방법", "방과후 운영시간",
+            "담임선생님 상담", "학교 전화번호", "전학 문의", "서류 발급 문의",
+            "학교시설", "등하교", "유치원", "보건실"
+        ]
+        
+        # 특별한 응답인 경우 QuickReplies 없이
+        if any(keyword in user_message for keyword in special_responses):
+            kakao_response = create_kakao_response(text)
+        # 첫 인사나 일반적인 질문인 경우 메인 메뉴 제공
+        elif any(keyword in user_message for keyword in ["안녕", "안녕하세요", "안녕!", "안녕~", "도움", "도움말", "무엇을", "뭐해", "뭐하고 있어"]):
+            kakao_response = create_kakao_response(text)
+            kakao_response["template"]["outputs"][0]["simpleText"]["quickReplies"] = create_quick_replies(None)  # 메인 메뉴
+        else:
+            kakao_response = create_kakao_response(text)
+            kakao_response["template"]["outputs"][0]["simpleText"]["quickReplies"] = create_quick_replies(quick_replies_category)
         
         return jsonify(kakao_response)
         
