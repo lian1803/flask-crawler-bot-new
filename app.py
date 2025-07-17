@@ -147,7 +147,7 @@ def create_kakao_response(message, quick_replies=None):
     if quick_replies and isinstance(quick_replies, list):
         if len(quick_replies) > 10:
             quick_replies = quick_replies[:10]
-        response["template"]["outputs"][0]["simpleText"]["quickReplies"] = quick_replies
+        response["template"]["quickReplies"] = quick_replies
     
     return response
 
