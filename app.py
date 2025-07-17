@@ -65,8 +65,8 @@ def extract_message(request):
         body = request.get_json()
         print(f"받은 요청 데이터: {body}")
         
-        # 카카오톡 챗봇 표준 형식
-        if body and 'action' in body and 'params' in body:
+        # 카카오톡 챗봇 표준 형식 (수정)
+        if body and 'action' in body and 'params' in body['action']:
             # 카카오톡 챗봇 v2.0 형식
             if 'utterance' in body['action']['params']:
                 return body['action']['params']['utterance']
@@ -327,9 +327,17 @@ def root():
 def webhook():
     """카카오톡 웹훅 엔드포인트"""
     try:
+        # 요청 데이터 로깅
+        print("=== 웹훅 요청 받음 ===")
+        print(f"Headers: {dict(request.headers)}")
+        print(f"Body: {request.get_data(as_text=True)}")
+        
         # 사용자 ID와 메시지 추출
         user_id = extract_user_id(request)
         user_message = extract_message(request)
+        
+        print(f"추출된 사용자 ID: {user_id}")
+        print(f"추출된 메시지: {user_message}")
         
         if not user_message:
             return jsonify({"error": "메시지를 찾을 수 없습니다."}), 400
