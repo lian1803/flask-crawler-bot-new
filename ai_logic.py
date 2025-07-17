@@ -376,7 +376,7 @@ class AILogic:
             if weekday >= 5:  # 토요일(5), 일요일(6)
                 weekday_names = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
                 return f"{date}({weekday_names[weekday]})는 주말이라 급식이 없습니다."
-            
+        
             # 실제 급식 데이터 조회
             menu = self.db.get_meal_info(date)
             if menu:
@@ -566,7 +566,7 @@ class AILogic:
             print(f"OpenAI 처리 중 오류: {e}")
             fallback_response = "죄송합니다. 해당 질문에 대한 답변을 찾을 수 없습니다. 다른 질문을 해주세요."
             self.db.save_conversation(user_id, user_message, fallback_response)
-            return False, fallback_response
+            return False, fallback_response 
     
     def add_image_to_response(self, response: str, qa_match: Dict) -> dict:
         """이미지 첨부 응답에 실제 이미지 URL 추가 (카카오톡 챗봇용)"""
@@ -574,72 +574,44 @@ class AILogic:
             # 질문 카테고리에 따른 이미지 매핑 (새로운 이미지 사용)
             image_mapping = {
                 "학사일정": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림1.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image1.jpeg",
                     "alt": "학사일정"
                 },
                 "교실 배치도": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림2.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image2.png",
                     "alt": "교실 배치도"
                 },
                 "정차대": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림3.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image3.png",
                     "alt": "정차대"
                 },
                 "학교시설": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림4.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image4.png",
                     "alt": "학교시설"
                 },
                 "급식": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림5.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image5.png",
                     "alt": "급식"
                 },
                 "방과후": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림6.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image7.png",
                     "alt": "방과후"
                 },
                 "상담": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림7.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image8.png",
                     "alt": "상담"
                 },
                 "전학": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림8.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image9.png",
                     "alt": "전학"
                 },
                 "유치원": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림9.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image10.png",
                     "alt": "유치원"
-                },
-                "결석": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림10.png",
-                    "alt": "결석"
-                },
-                "등하교": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림11.png",
-                    "alt": "등하교"
-                },
-                "체육관": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림12.png",
-                    "alt": "체육관"
-                },
-                "도서관": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림13.png",
-                    "alt": "도서관"
-                },
-                "보건실": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림14.png",
-                    "alt": "보건실"
-                },
-                "컴퓨터실": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림15.png",
-                    "alt": "컴퓨터실"
-                },
-                "음악실": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림16.png",
-                    "alt": "음악실"
                 }
             }
             
-            # 질문 내용에 따른 이미지 선택 (확장된 카테고리)
+            # 질문 내용에 따른 이미지 선택 (실제 이미지에 맞게 수정)
             question_lower = qa_match['question'].lower()
             
             if "학사일정" in response or "개학" in question_lower or "방학" in question_lower:
@@ -658,20 +630,6 @@ class AILogic:
                 image_info = image_mapping["전학"]
             elif "유치원" in question_lower or "유아" in question_lower:
                 image_info = image_mapping["유치원"]
-            elif "결석" in question_lower or "출석" in question_lower:
-                image_info = image_mapping["결석"]
-            elif "등하교" in question_lower or "등교" in question_lower or "하교" in question_lower:
-                image_info = image_mapping["등하교"]
-            elif "체육관" in question_lower or "운동장" in question_lower:
-                image_info = image_mapping["체육관"]
-            elif "도서관" in question_lower or "도서실" in question_lower:
-                image_info = image_mapping["도서관"]
-            elif "보건실" in question_lower or "보건" in question_lower:
-                image_info = image_mapping["보건실"]
-            elif "컴퓨터실" in question_lower or "컴퓨터" in question_lower:
-                image_info = image_mapping["컴퓨터실"]
-            elif "음악실" in question_lower or "음악" in question_lower:
-                image_info = image_mapping["음악실"]
             elif "시설" in question_lower:
                 image_info = image_mapping["학교시설"]
             else:
@@ -697,20 +655,6 @@ class AILogic:
                     text = "와석초등학교 전학 안내입니다. 아래 이미지를 참고해주세요."
                 elif "유치원" in question_lower or "유아" in question_lower:
                     text = "와석초등학교 유치원 안내입니다. 아래 이미지를 참고해주세요."
-                elif "결석" in question_lower or "출석" in question_lower:
-                    text = "와석초등학교 결석 신고 안내입니다. 아래 이미지를 참고해주세요."
-                elif "등하교" in question_lower or "등교" in question_lower or "하교" in question_lower:
-                    text = "와석초등학교 등하교 안내입니다. 아래 이미지를 참고해주세요."
-                elif "체육관" in question_lower or "운동장" in question_lower:
-                    text = "와석초등학교 체육관 이용 안내입니다. 아래 이미지를 참고해주세요."
-                elif "도서관" in question_lower or "도서실" in question_lower:
-                    text = "와석초등학교 도서관 이용 안내입니다. 아래 이미지를 참고해주세요."
-                elif "보건실" in question_lower or "보건" in question_lower:
-                    text = "와석초등학교 보건실 안내입니다. 아래 이미지를 참고해주세요."
-                elif "컴퓨터실" in question_lower or "컴퓨터" in question_lower:
-                    text = "와석초등학교 컴퓨터실 안내입니다. 아래 이미지를 참고해주세요."
-                elif "음악실" in question_lower or "음악" in question_lower:
-                    text = "와석초등학교 음악실 안내입니다. 아래 이미지를 참고해주세요."
                 elif "시설" in question_lower:
                     text = "와석초등학교 시설 이용시간입니다. 아래 이미지를 참고해주세요."
                 else:

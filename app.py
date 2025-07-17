@@ -142,7 +142,7 @@ def create_kakao_response(message, quick_replies=None):
             ]
         }
     }
-    
+
     # QuickReplies가 있으면 추가 (최대 10개)
     if quick_replies and isinstance(quick_replies, list):
         if len(quick_replies) > 10:
@@ -222,7 +222,7 @@ def create_quick_replies(category=None):
                 "messageText": "오늘 급식 메뉴 알려줘"
             },
             {
-                "action": "message",
+                "action": "message", 
                 "label": "📅 이번주 급식",
                 "messageText": "이번주 급식 메뉴 알려줘"
             },
