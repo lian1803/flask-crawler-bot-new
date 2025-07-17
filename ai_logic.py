@@ -571,70 +571,70 @@ class AILogic:
     def add_image_to_response(self, response: str, qa_match: Dict) -> dict:
         """이미지 첨부 응답에 실제 이미지 URL 추가 (카카오톡 챗봇용)"""
         try:
-            # 질문 카테고리에 따른 이미지 매핑 (실제 이미지 파일 사용)
+            # 질문 카테고리에 따른 이미지 매핑 (GitHub raw URL 사용)
             image_mapping = {
                 "학사일정": {
-                    "url": "/static/images/그림1.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림1.jpg",
                     "alt": "학사일정"
                 },
                 "교실 배치도": {
-                    "url": "/static/images/그림2.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림2.png",
                     "alt": "교실 배치도"
                 },
                 "정차대": {
-                    "url": "/static/images/그림3.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림3.png",
                     "alt": "정차대 안내"
                 },
                 "학교시설": {
-                    "url": "/static/images/그림4.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림4.png",
                     "alt": "학교시설 이용시간"
                 },
                 "급식": {
-                    "url": "/static/images/그림5.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림5.png",
                     "alt": "급식 정보"
                 },
                 "방과후": {
-                    "url": "/static/images/그림6.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림6.jpg",
                     "alt": "방과후 프로그램"
                 },
                 "상담": {
-                    "url": "/static/images/그림7.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림7.png",
                     "alt": "상담 안내"
                 },
                 "전학": {
-                    "url": "/static/images/그림8.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림8.png",
                     "alt": "전학 안내"
                 },
                 "유치원": {
-                    "url": "/static/images/그림9.jpg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림9.jpg",
                     "alt": "유치원 안내"
                 },
                 "결석": {
-                    "url": "/static/images/그림10.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림10.png",
                     "alt": "결석 신고 안내"
                 },
                 "등하교": {
-                    "url": "/static/images/그림11.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림11.png",
                     "alt": "등하교 안내"
                 },
                 "체육관": {
-                    "url": "/static/images/그림12.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림12.png",
                     "alt": "체육관 이용"
                 },
                 "도서관": {
-                    "url": "/static/images/그림13.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림13.png",
                     "alt": "도서관 이용"
                 },
                 "보건실": {
-                    "url": "/static/images/그림14.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림14.png",
                     "alt": "보건실 안내"
                 },
                 "컴퓨터실": {
-                    "url": "/static/images/그림15.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림15.png",
                     "alt": "컴퓨터실 안내"
                 },
                 "음악실": {
-                    "url": "/static/images/그림16.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림16.png",
                     "alt": "음악실 안내"
                 }
             }
@@ -719,10 +719,12 @@ class AILogic:
                 text = response
             
             return {
-                "type": "image",
-                "imageUrl": image_info["url"],
-                "altText": image_info["alt"],
-                "text": text
+                "type": "basicCard",
+                "title": f"와석초등학교 {image_info['alt']}",
+                "description": text,
+                "thumbnail": {
+                    "imageUrl": image_info["url"]
+                }
             }
             
         except Exception as e:
