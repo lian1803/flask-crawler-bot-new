@@ -81,93 +81,151 @@ class AILogic:
         return text.strip()
 
     def is_school_related(self, text: str) -> bool:
-        """와석초 관련 질문인지 판별 (키워드 기반)"""
-        # 기본 학교 관련 키워드
+        """와석초등학교 관련 질문인지 판별 (개선된 버전)"""
+        text_lower = text.lower()
+        
+        # 학교 관련 키워드 (확장된 목록)
         school_keywords = [
-            '와석초', '학교', '선생', '교사', '학년', '반', '학생', '급식', '식단', '방과후', 
-            '하교', '등교', '교실', '학사', '수업', '상담', '교무실', '교장', '교감', '유치원', 
-            '돌봄', '학부모', '행정실', '시설', '공지', '알림', '방학', '전학', '입학', '졸업', 
-            '체험', '결석', '출석', '신청', '교재', '교과서', '도서실', '분실물', '쉼터', '늘봄'
+            # 학교 기본 정보
+            '와석', '와석초', '와석초등학교', '학교', '초등학교',
+            
+            # 학사 관련
+            '개학', '방학', '졸업', '입학', '전학', '전입', '전출',
+            '학사일정', '학사', '일정', '스케줄', '시험', '시험일',
+            
+            # 급식 관련 (맥락적 표현 포함)
+            '급식', '식단', '점심', '중식', '메뉴', '밥', '식사', '밥상',
+            '먹어', '먹었어', '먹었어요', '먹었냐', '나와', '나와요', '나오냐',
+            
+            # 방과후 관련
+            '방과후', '방과후학교', '늘봄교실', '돌봄교실', '특기적성',
+            
+            # 교실/학급 관련
+            '교실', '학급', '반', '담임', '선생님', '교사', '학년',
+            
+            # 등하교 관련
+            '등교', '하교', '등하교', '정차대', '버스', '통학',
+            
+            # 학교시설 관련
+            '체육관', '운동장', '도서관', '도서실', '보건실', '급식실',
+            '컴퓨터실', '음악실', '미술실', '학교시설',
+            
+            # 상담/문의 관련
+            '상담', '문의', '연락', '전화', '전화번호', '연락처', '얘기', '만나',
+            
+            # 결석/출석 관련
+            '결석', '출석', '체험학습', '현장학습', '신고서', '아프면', '병원',
+            
+            # 유치원 관련
+            '유치원', '유아', '원무실', '등원', '하원',
+            
+            # 일반적인 학교 관련 표현
+            '알려줘', '알려주세요', '어디', '언제', '어떻게', '무엇', '왜', '누가', '어떤', '몇',
+            '궁금', '필요', '찾고', '도와', '부탁', '얼마', '얼마나', '뭐가', '뭐야', '뭐예요',
+            '어디야', '어디예요', '언제야', '언제예요', '어떻게야', '어떻게예요',
+            '누구한테', '누구랑', '어디로', '어디서', '언제까지', '얼마나 걸려'
         ]
         
-        # 질문 패턴 (학교 관련 질문임을 나타내는 단어들)
-        question_patterns = [
-            '언제', '어디서', '어떻게', '몇시', '얼마', '무엇', '누구', '왜', '어떤',
-            '절차', '신청', '발급', '연락', '문의', '안내', '정보', '위치', '시간', '비용'
+        # 부적절한 내용 키워드
+        inappropriate_keywords = [
+            '바보', '멍청', '싫어', '화나', '짜증', '죽어', '꺼져',
+            '개새끼', '병신', '미친', '돌았', '미쳤'
         ]
-        # 추가 패턴 (학교 행정/서류/사진 등)
-        extra_patterns = [
-            '필요한 서류', '기간', '방법', '연락처', '재발급', '첨부', '사진', '파일', '양식', '증명서', '신청서', '보고서'
-        ]
-        if any(p in text for p in extra_patterns):
-            return True
         
-        # QA DB에서 키워드 매칭 확인
-        try:
-            if self.qa_data:
-                text_lower = text.lower()
-                for qa in self.qa_data:
-                    question_lower = qa['question'].lower()
-                    # 중요 키워드 매칭
-                    important_keywords = ['상담', '방과후', '급식', '학교폭력', '등하교', '전학', '결석']
-                    for keyword in important_keywords:
-                        if keyword in text_lower and keyword in question_lower:
-                            return True
-        except Exception:
-            pass
+        # 부적절한 내용이 포함된 경우 거부
+        for keyword in inappropriate_keywords:
+            if keyword in text_lower:
+                return False
         
-        has_school_keyword = any(k in text for k in school_keywords)
-        has_question_pattern = any(p in text for p in question_patterns)
-        return has_school_keyword or has_question_pattern
+        # 학교 관련 키워드가 하나라도 포함된 경우 허용
+        for keyword in school_keywords:
+            if keyword in text_lower:
+                return True
+        
+        # 일반적인 인사나 도움 요청은 허용
+        greeting_keywords = ['안녕', '도움', '감사', '고마워', '잘 있어']
+        for keyword in greeting_keywords:
+            if keyword in text_lower:
+                return True
+        
+        # 와석초와 관련없는 일반적인 질문은 거부
+        unrelated_keywords = ['날씨', '주식', '영화', '음식', '여행', '쇼핑', '게임']
+        for keyword in unrelated_keywords:
+            if keyword in text_lower:
+                return False
+        
+        return False
 
     def find_qa_match(self, user_message: str, threshold: float = 0.15) -> Optional[Dict]:
-        """QA 데이터베이스에서 유사한 질문 찾기 (최적화된 버전)"""
-        if not self.qa_data:
-            return None
-        
+        """QA 데이터에서 유사한 질문 찾기 (개선된 버전)"""
         try:
-            user_message_lower = user_message.lower()
+            user_message_lower = user_message.lower().strip()
             best_match = None
             best_score = 0
             
-            # 빠른 매칭을 위해 중요 키워드 우선 확인
+            # 중요 키워드 정의 (맥락적 매칭을 위해 확장)
             important_keywords = [
-                '상담', '방과후', '급식', '학교폭력', '등하교', '전학', '결석',
-                '유치원', '초등', '학교', '학부모', '학생', '선생님', '교사'
+                "개학", "급식", "방과후", "전학", "상담", "결석", "교실", "등하교",
+                "학교시설", "유치원", "전화번호", "연락처", "일정", "시간", "방법",
+                "절차", "신청", "등록", "예약", "문의", "알려줘", "알려주세요",
+                "어디", "언제", "어떻게", "무엇", "왜", "누가", "어떤", "몇",
+                # 맥락적 키워드 추가
+                "밥", "점심", "메뉴", "식사", "중식", "밥상", "먹어", "나와",
+                "얘기", "만나", "아프면", "병원", "등원", "하원",
+                "뭐야", "뭐예요", "어디야", "어디예요", "언제야", "언제예요",
+                "어떻게야", "어떻게예요", "얼마야", "얼마예요", "얼마나"
             ]
             
-            # 중요 키워드가 있는 QA만 먼저 확인
-            priority_qa = []
-            for qa in self.qa_data:
-                question_lower = qa['question'].lower()
-                for keyword in important_keywords:
-                    if keyword in user_message_lower and keyword in question_lower:
-                        priority_qa.append(qa)
-                        break
-            
             # 우선순위 QA가 있으면 그것만 확인, 없으면 전체 확인
-            qa_list = priority_qa if priority_qa else self.qa_data[:20]  # 최대 20개만 확인
+            qa_list = self.qa_data  # 전체 QA 데이터 확인
             
             for qa in qa_list:
                 question_lower = qa['question'].lower()
                 
-                # 간단한 키워드 매칭 점수
+                # 1. 정확한 매칭 (가장 높은 점수)
+                if user_message_lower == question_lower:
+                    return qa
+                
+                # 2. 포함 관계 확인
+                if user_message_lower in question_lower or question_lower in user_message_lower:
+                    score = 0.8
+                    if score > best_score:
+                        best_score = score
+                        best_match = qa
+                    continue
+                
+                # 3. 맥락적 매칭 (새로 추가)
+                context_score = self.calculate_context_score(user_message_lower, question_lower)
+                if context_score > 0:
+                    if context_score > best_score:
+                        best_score = context_score
+                        best_match = qa
+                    continue
+                
+                # 4. 단어 기반 매칭
                 score = 0
                 user_words = set(user_message_lower.split())
                 question_words = set(question_lower.split())
+                
+                # 공통 단어 수
                 common_words = user_words & question_words
-                score += len(common_words) * 0.5
+                score += len(common_words) * 0.4
                 
                 # 중요 키워드 가중치
                 for keyword in important_keywords:
                     if keyword in user_message_lower and keyword in question_lower:
-                        score += 0.8
+                        score += 0.6
                         break
                 
-                # 부분 문자열 매칭 (간단하게)
+                # 부분 문자열 매칭
                 for word in user_words:
-                    if len(word) > 2 and word in question_lower:
-                        score += 0.3
+                    if len(word) > 2:
+                        if word in question_lower:
+                            score += 0.2
+                        # 유사한 단어 매칭 (예: "개학"과 "개학일")
+                        for q_word in question_words:
+                            if len(q_word) > 2 and (word in q_word or q_word in word):
+                                score += 0.1
                 
                 if score > best_score:
                     best_score = score
@@ -178,6 +236,81 @@ class AILogic:
         except Exception as e:
             print(f"QA 매칭 중 오류: {e}")
         return None
+    
+    def calculate_context_score(self, user_message: str, question: str) -> float:
+        """맥락적 매칭 점수 계산"""
+        score = 0
+        
+        # 급식 관련 맥락 매칭
+        meal_contexts = [
+            (['밥', '뭐냐', '뭐야', '뭐예요'], ['급식', '식단', '메뉴']),
+            (['점심', '뭐냐', '뭐야', '뭐예요'], ['급식', '식단', '메뉴']),
+            (['메뉴', '뭐냐', '뭐야', '뭐예요'], ['급식', '식단', '메뉴']),
+            (['먹어', '뭐'], ['급식', '식단', '메뉴']),
+            (['나와', '뭐'], ['급식', '식단', '메뉴']),
+            (['밥상', '뭐냐', '뭐야', '뭐예요'], ['급식', '식단', '메뉴'])
+        ]
+        
+        for user_pattern, question_pattern in meal_contexts:
+            if any(word in user_message for word in user_pattern):
+                if any(word in question for word in question_pattern):
+                    score += 0.7
+                    break
+        
+        # 상담 관련 맥락 매칭
+        counseling_contexts = [
+            (['얘기', '하고', '싶어'], ['상담']),
+            (['만나', '고', '싶어'], ['상담']),
+            (['담임', '이랑'], ['상담', '담임']),
+            (['선생님', '이랑'], ['상담', '교사'])
+        ]
+        
+        for user_pattern, question_pattern in counseling_contexts:
+            if any(word in user_message for word in user_pattern):
+                if any(word in question for word in question_pattern):
+                    score += 0.6
+                    break
+        
+        # 결석 관련 맥락 매칭
+        absence_contexts = [
+            (['아프면', '어떻게'], ['결석', '신고']),
+            (['병원', '갈', '것', '같으면'], ['결석', '신고']),
+            (['몸이', '안', '좋으면'], ['결석', '신고'])
+        ]
+        
+        for user_pattern, question_pattern in absence_contexts:
+            if any(word in user_message for word in user_pattern):
+                if any(word in question for word in question_pattern):
+                    score += 0.6
+                    break
+        
+        # 교실 관련 맥락 매칭
+        classroom_contexts = [
+            (['어디야', '어디예요'], ['교실', '배치', '위치']),
+            (['찾고', '있어'], ['교실', '배치', '위치']),
+            (['어떻게', '가'], ['교실', '배치', '위치'])
+        ]
+        
+        for user_pattern, question_pattern in classroom_contexts:
+            if any(word in user_message for word in user_pattern):
+                if any(word in question for word in question_pattern):
+                    score += 0.5
+                    break
+        
+        # 등하교 관련 맥락 매칭
+        commute_contexts = [
+            (['언제야', '언제예요'], ['등교', '하교', '시간']),
+            (['몇시야', '몇시예요'], ['등교', '하교', '시간']),
+            (['어떻게', '가'], ['등교', '하교', '방법'])
+        ]
+        
+        for user_pattern, question_pattern in commute_contexts:
+            if any(word in user_message for word in user_pattern):
+                if any(word in question for word in question_pattern):
+                    score += 0.5
+                    break
+        
+        return score
     
     def get_date_from_message(self, text: str) -> Optional[str]:
         """메시지에서 날짜 추출"""
@@ -295,28 +428,60 @@ class AILogic:
             self.db.save_conversation(user_id, user_message, response)
             return True, response
         
-        # 3. QA 데이터베이스에서 유사한 질문 찾기 (우선순위 높음)
+        # 3. 간단한 키워드 기반 답변 (우선순위 높음)
+        simple_responses = {
+            # 인사 관련
+            "안녕": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            "안녕하세요": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            "안녕!": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            "안녕~": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            
+            # 도움 요청 관련
+            "도움": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
+            "도움말": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
+            "도움말이 필요해": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
+            "도움이 필요해": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
+            
+            # 감사 관련
+            "감사": "도움이 되어서 기쁩니다! 다른 질문이 있으시면 언제든 말씀해주세요.",
+            "감사합니다": "도움이 되어서 기쁩니다! 다른 질문이 있으시면 언제든 말씀해주세요.",
+            "고마워": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
+            "고마워요": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
+            "고맙습니다": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
+            
+            # 기타 일반적인 질문
+            "뭐해": "와석초등학교 관련 질문에 답변하고 있어요. 무엇을 도와드릴까요?",
+            "뭐하고 있어": "와석초등학교 관련 질문에 답변하고 있어요. 무엇을 도와드릴까요?",
+            "뭐해?": "와석초등학교 관련 질문에 답변하고 있어요. 무엇을 도와드릴까요?",
+            "뭐하고 있어?": "와석초등학교 관련 질문에 답변하고 있어요. 무엇을 도와드릴까요?",
+            
+            # 작별 인사
+            "잘 있어": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요.",
+            "잘 있어요": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요.",
+            "잘 있어~": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요.",
+            "잘 있어요~": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요."
+        }
+        
+        # 부분 매칭으로 간단한 응답 찾기 (우선순위 높게 처리)
+        for keyword, response in simple_responses.items():
+            if keyword in user_message:
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+        
+        # 4. QA 데이터베이스에서 유사한 질문 찾기
         qa_match = self.find_qa_match(user_message)
         if qa_match:
             response = qa_match['answer']
+            
+            # 이미지 첨부 응답 처리
+            if "사진 첨부" in response or "이미지 파일 첨부" in response:
+                response = self.add_image_to_response(response, qa_match)
+            
             if qa_match.get('additional_answer'):
                 response += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
             
             self.db.save_conversation(user_id, user_message, response)
             return True, response
-        
-        # 4. 간단한 키워드 기반 답변 (OpenAI 호출 대신)
-        simple_responses = {
-            "안녕": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
-            "도움": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
-            "감사": "도움이 되어서 기쁩니다! 다른 질문이 있으시면 언제든 말씀해주세요.",
-            "고마워": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요."
-        }
-        
-        for keyword, response in simple_responses.items():
-            if keyword in user_message:
-                self.db.save_conversation(user_id, user_message, response)
-                return True, response
         
         # 5. OpenAI를 통한 응답 (마지막 수단, 타임아웃 방지를 위해 간단하게)
         try:
@@ -344,4 +509,57 @@ class AILogic:
             print(f"OpenAI 처리 중 오류: {e}")
             fallback_response = "죄송합니다. 해당 질문에 대한 답변을 찾을 수 없습니다. 다른 질문을 해주세요."
             self.db.save_conversation(user_id, user_message, fallback_response)
-            return False, fallback_response 
+            return False, fallback_response
+    
+    def add_image_to_response(self, response: str, qa_match: Dict) -> str:
+        """이미지 첨부 응답에 실제 이미지 URL 추가"""
+        try:
+            # 질문 카테고리에 따른 이미지 매핑
+            image_mapping = {
+                "학사일정": {
+                    "url": "https://pajuwaseok-e.goepj.kr/pajuwaseok-e/na/ntt/selectNttInfo.do?mi=8416&bbsId=5770&nttSn=1256416",
+                    "alt": "학사일정"
+                },
+                "교실 배치도": {
+                    "url": "https://pajuwaseok-e.goepj.kr/pajuwaseok-e/na/ntt/selectNttInfo.do?mi=8416&bbsId=5770&nttSn=1256417",
+                    "alt": "교실 배치도"
+                },
+                "정차대": {
+                    "url": "https://pajuwaseok-e.goepj.kr/pajuwaseok-e/na/ntt/selectNttInfo.do?mi=8416&bbsId=5770&nttSn=1256418",
+                    "alt": "정차대 안내"
+                },
+                "학교시설": {
+                    "url": "https://pajuwaseok-e.goepj.kr/pajuwaseok-e/na/ntt/selectNttInfo.do?mi=8416&bbsId=5770&nttSn=1256419",
+                    "alt": "학교시설 이용시간"
+                }
+            }
+            
+            # 질문 내용에 따른 이미지 선택
+            question_lower = qa_match['question'].lower()
+            
+            if "학사일정" in response or "개학" in question_lower:
+                image_info = image_mapping["학사일정"]
+            elif "교실" in question_lower or "배치" in question_lower:
+                image_info = image_mapping["교실 배치도"]
+            elif "정차" in question_lower or "등하교" in question_lower:
+                image_info = image_mapping["정차대"]
+            elif "시설" in question_lower or "체육관" in question_lower:
+                image_info = image_mapping["학교시설"]
+            else:
+                # 기본적으로 학사일정 이미지 사용
+                image_info = image_mapping["학사일정"]
+            
+            # JSON 형태로 이미지 정보 포함
+            image_response = {
+                "text": response,
+                "image": {
+                    "url": image_info["url"],
+                    "alt": image_info["alt"]
+                }
+            }
+            
+            return str(image_response)
+            
+        except Exception as e:
+            print(f"이미지 첨부 처리 중 오류: {e}")
+            return response 
