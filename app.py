@@ -167,25 +167,21 @@ def webhook():
         success, response = ai_logic.process_message(user_message, user_id)
         
         # 응답 타입에 따른 카카오톡 응답 형식 생성
-        if isinstance(response, dict) and response.get("type") == "image":
-            # 이미지 응답
+        if isinstance(response, dict) and response.get("type") == "basicCard":
+            # basicCard 응답
             kakao_response = {
                 "version": "2.0",
                 "template": {
                     "outputs": [
                         {
-                            "simpleImage": {
-                                "imageUrl": response["imageUrl"],
-                                "altText": response["altText"]
-                            }
-                        },
-                        {
-                            "simpleText": {
-                                "text": response["text"],
-                                "quickReplies": create_quick_replies()
+                            "basicCard": {
+                                "title": response["title"],
+                                "description": response["description"],
+                                "thumbnail": response["thumbnail"]
                             }
                         }
-                    ]
+                    ],
+                    "quickReplies": create_quick_replies()
                 }
             }
         else:
@@ -240,13 +236,13 @@ def test():
             success, response = ai_logic.process_message(user_message, user_id)
             
             # 응답 타입에 따른 처리
-            if isinstance(response, dict) and response.get("type") == "image":
+            if isinstance(response, dict) and response.get("type") == "basicCard":
                 response_data = {
                     "success": success,
-                    "response_type": "image",
-                    "image_url": response["imageUrl"],
-                    "alt_text": response["altText"],
-                    "text": response["text"],
+                    "response_type": "basicCard",
+                    "title": response["title"],
+                    "description": response["description"],
+                    "thumbnail": response["thumbnail"],
                     "user_message": user_message,
                     "user_id": user_id
                 }
