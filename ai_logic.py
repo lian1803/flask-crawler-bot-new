@@ -524,9 +524,14 @@ class AILogic:
             # 이미지 첨부 응답 처리
             if "사진 첨부" in response or "이미지 파일 첨부" in response:
                 response = self.add_image_to_response(response, qa_match)
+            else:
+                response = {"type": "text", "text": response}
             
             if qa_match.get('additional_answer'):
-                response += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
+                if isinstance(response, dict):
+                    response["text"] += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
+                else:
+                    response += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
             
             self.db.save_conversation(user_id, user_message, response)
             return True, response
@@ -563,8 +568,8 @@ class AILogic:
             self.db.save_conversation(user_id, user_message, fallback_response)
             return False, fallback_response
     
-    def add_image_to_response(self, response: str, qa_match: Dict) -> str:
-        """이미지 첨부 응답에 실제 이미지 URL 추가"""
+    def add_image_to_response(self, response: str, qa_match: Dict) -> dict:
+        """이미지 첨부 응답에 실제 이미지 URL 추가 (카카오톡 챗봇용)"""
         try:
             # 질문 카테고리에 따른 이미지 매핑
             image_mapping = {
@@ -601,17 +606,14 @@ class AILogic:
                 # 기본적으로 학사일정 이미지 사용
                 image_info = image_mapping["학사일정"]
             
-            # JSON 형태로 이미지 정보 포함
-            image_response = {
-                "text": response,
-                "image": {
-                    "url": image_info["url"],
-                    "alt": image_info["alt"]
-                }
+            # 카카오톡 챗봇용 이미지 응답 구조
+            return {
+                "type": "image",
+                "imageUrl": image_info["url"],
+                "altText": image_info["alt"],
+                "text": response
             }
-            
-            return str(image_response)
             
         except Exception as e:
             print(f"이미지 첨부 처리 중 오류: {e}")
-            return response 
+            return {"type": "text", "text": response} 

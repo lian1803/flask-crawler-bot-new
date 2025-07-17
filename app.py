@@ -166,11 +166,37 @@ def webhook():
         ai_logic = get_ai_logic()
         success, response = ai_logic.process_message(user_message, user_id)
         
-        # 카카오톡 응답 형식 생성
-        kakao_response = create_kakao_response(response)
-        
-        # 퀵 리플라이 추가
-        kakao_response["template"]["outputs"][0]["simpleText"]["quickReplies"] = create_quick_replies()
+        # 응답 타입에 따른 카카오톡 응답 형식 생성
+        if isinstance(response, dict) and response.get("type") == "image":
+            # 이미지 응답
+            kakao_response = {
+                "version": "2.0",
+                "template": {
+                    "outputs": [
+                        {
+                            "simpleImage": {
+                                "imageUrl": response["imageUrl"],
+                                "altText": response["altText"]
+                            }
+                        },
+                        {
+                            "simpleText": {
+                                "text": response["text"],
+                                "quickReplies": create_quick_replies()
+                            }
+                        }
+                    ]
+                }
+            }
+        else:
+            # 텍스트 응답
+            if isinstance(response, dict):
+                text = response.get("text", str(response))
+            else:
+                text = str(response)
+            
+            kakao_response = create_kakao_response(text)
+            kakao_response["template"]["outputs"][0]["simpleText"]["quickReplies"] = create_quick_replies()
         
         return jsonify(kakao_response)
         
@@ -213,12 +239,27 @@ def test():
             ai_logic = get_ai_logic()
             success, response = ai_logic.process_message(user_message, user_id)
             
-            return jsonify({
-                "success": success,
-                "response": response,
-                "user_message": user_message,
-                "user_id": user_id
-            })
+            # 응답 타입에 따른 처리
+            if isinstance(response, dict) and response.get("type") == "image":
+                response_data = {
+                    "success": success,
+                    "response_type": "image",
+                    "image_url": response["imageUrl"],
+                    "alt_text": response["altText"],
+                    "text": response["text"],
+                    "user_message": user_message,
+                    "user_id": user_id
+                }
+            else:
+                response_data = {
+                    "success": success,
+                    "response_type": "text",
+                    "response": response,
+                    "user_message": user_message,
+                    "user_id": user_id
+                }
+            
+            return jsonify(response_data)
             
         except Exception as e:
             exception_handler(e)
