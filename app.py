@@ -107,21 +107,31 @@ def extract_message(request):
 
 def create_kakao_response(message, quick_replies=None):
     """카카오톡 응답 형식 생성"""
+    # 메시지가 None이거나 빈 문자열인 경우 기본 메시지 사용
+    if not message or message.strip() == "":
+        message = "안녕하세요! 와석초등학교 챗봇입니다."
+    
+    # 메시지 길이 제한 (카카오톡 제한)
+    if len(message) > 1000:
+        message = message[:997] + "..."
+    
     response = {
         "version": "2.0",
         "template": {
             "outputs": [
                 {
                     "simpleText": {
-                        "text": message
+                        "text": str(message)
                     }
                 }
             ]
         }
     }
     
-    # QuickReplies가 있으면 추가
-    if quick_replies:
+    # QuickReplies가 있으면 추가 (최대 10개)
+    if quick_replies and isinstance(quick_replies, list):
+        if len(quick_replies) > 10:
+            quick_replies = quick_replies[:10]
         response["template"]["outputs"][0]["simpleText"]["quickReplies"] = quick_replies
     
     return response
@@ -340,19 +350,35 @@ def webhook():
         print(f"추출된 메시지: {user_message}")
         
         if not user_message:
-            return jsonify({"error": "메시지를 찾을 수 없습니다."}), 400
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [
+                        {
+                            "simpleText": {
+                                "text": "메시지를 이해하지 못했습니다. 다시 말씀해 주세요."
+                            }
+                        }
+                    ]
+                }
+            })
         
         print(f"사용자 {user_id}: {user_message}")
         
-        # AI 로직으로 메시지 처리
-        ai_logic = get_ai_logic()
-        success, response = ai_logic.process_message(user_message, user_id)
-        
-        # 텍스트 응답으로 통일
-        if isinstance(response, dict):
-            text = response.get("text", str(response))
-        else:
-            text = str(response)
+        # AI 로직으로 메시지 처리 (타임아웃 방지)
+        try:
+            ai_logic = get_ai_logic()
+            success, response = ai_logic.process_message(user_message, user_id)
+            
+            # 텍스트 응답으로 통일
+            if isinstance(response, dict):
+                text = response.get("text", str(response))
+            else:
+                text = str(response)
+                
+        except Exception as ai_error:
+            print(f"AI 로직 오류: {ai_error}")
+            text = "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?"
         
         # 사용자 메시지에 따른 QuickReplies 결정
         quick_replies_category = None
@@ -382,11 +408,25 @@ def webhook():
         else:
             kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category))
         
+        # 응답 로깅
+        print(f"응답 데이터: {kakao_response}")
+        
+        # 응답 형식 검증
+        if not isinstance(kakao_response, dict):
+            raise ValueError("응답이 딕셔너리 형식이 아닙니다")
+        
+        if "version" not in kakao_response:
+            kakao_response["version"] = "2.0"
+        
+        if "template" not in kakao_response:
+            raise ValueError("template 필드가 없습니다")
+        
         return jsonify(kakao_response)
         
     except Exception as e:
         traceback.print_exc(file=sys.stdout)
         exception_handler(e)
+        print(f"오류 발생: {e}")
         return jsonify({
             "version": "2.0",
             "template": {
