@@ -11,17 +11,30 @@ class AILogic:
         openai.api_key = OPENAI_API_KEY
         self.db = DatabaseManager()
         self.qa_data = None
-        self.load_qa_data()
+        self._initialized = False
+        
+    def _ensure_initialized(self):
+        """필요할 때만 QA 데이터를 로드하는 지연 초기화"""
+        if not self._initialized:
+            self.load_qa_data()
+            self._initialized = True
         
     def load_qa_data(self):
-        """QA 데이터 로드"""
+        """QA 데이터 로드 (최적화된 버전)"""
         try:
             # JSON 파일에서 데이터 로드
             with open('school_dataset.json', 'r', encoding='utf-8') as f:
                 self.qa_data = json.load(f)
-        except:
-            # DB에서 데이터 로드 (fallback)
-            self.qa_data = self.db.get_qa_data()
+                print(f"QA 데이터 로드 완료: {len(self.qa_data)}개 항목")
+        except Exception as e:
+            print(f"JSON 파일 로드 실패: {e}")
+            try:
+                # DB에서 데이터 로드 (fallback)
+                self.qa_data = self.db.get_qa_data()
+                print(f"DB에서 QA 데이터 로드 완료: {len(self.qa_data)}개 항목")
+            except Exception as e2:
+                print(f"DB 로드도 실패: {e2}")
+                self.qa_data = []
     
     def is_banned_content(self, text: str) -> bool:
         """금지된 내용인지 확인 (학교 관련 문의는 예외)"""
@@ -158,6 +171,7 @@ class AILogic:
 
     def find_qa_match(self, user_message: str, threshold: float = 0.15) -> Optional[Dict]:
         """QA 데이터에서 유사한 질문 찾기 (개선된 버전)"""
+        self._ensure_initialized() # 데이터 로드 보장
         try:
             user_message_lower = user_message.lower().strip()
             best_match = None
@@ -392,6 +406,40 @@ class AILogic:
         
         return result
     
+    def get_quick_response(self, user_message: str) -> Optional[str]:
+        """키워드 기반 빠른 응답 (성능 향상)"""
+        user_message_lower = user_message.lower()
+        
+        # 간단한 키워드 기반 답변
+        quick_responses = {
+            # 인사 관련
+            "안녕": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            "안녕하세요": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            "안녕!": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            "안녕~": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            
+            # 도움 요청 관련
+            "도움": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
+            "도움말": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
+            
+            # 감사 관련
+            "감사": "도움이 되어서 기쁩니다! 다른 질문이 있으시면 언제든 말씀해주세요.",
+            "감사합니다": "도움이 되어서 기쁩니다! 다른 질문이 있으시면 언제든 말씀해주세요.",
+            "고마워": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
+            "고마워요": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
+            
+            # 작별 인사
+            "잘 있어": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요.",
+            "잘 있어요": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요."
+        }
+        
+        # 부분 매칭으로 빠른 응답 찾기
+        for keyword, response in quick_responses.items():
+            if keyword in user_message_lower:
+                return response
+        
+        return None
+    
     def process_message(self, user_message: str, user_id: str) -> Tuple[bool, str]:
         """메인 메시지 처리 로직 (최적화된 버전)"""
         print(f"사용자 메시지: {user_message}")
@@ -484,6 +532,10 @@ class AILogic:
             return True, response
         
         # 5. OpenAI를 통한 응답 (마지막 수단, 타임아웃 방지를 위해 간단하게)
+        return self.call_openai_api(user_message, user_id)
+    
+    def call_openai_api(self, user_message: str, user_id: str) -> Tuple[bool, str]:
+        """OpenAI API 호출 (최적화된 버전)"""
         try:
             # 간단한 프롬프트만 사용
             simple_prompt = f"와석초등학교 챗봇입니다. 다음 질문에 대해 간단하고 친근하게 답변해주세요: {user_message}"

@@ -9,9 +9,23 @@ from database import DatabaseManager
 
 app = Flask(__name__)
 
-# 초기화
-ai_logic = AILogic()
-db = DatabaseManager()
+# 지연 초기화를 위한 전역 변수
+ai_logic = None
+db = None
+
+def get_ai_logic():
+    """AI 로직 인스턴스 가져오기 (지연 초기화)"""
+    global ai_logic
+    if ai_logic is None:
+        ai_logic = AILogic()
+    return ai_logic
+
+def get_db():
+    """DB 인스턴스 가져오기 (지연 초기화)"""
+    global db
+    if db is None:
+        db = DatabaseManager()
+    return db
 
 def exception_handler(exception):
     """예외 처리 함수"""
@@ -149,6 +163,7 @@ def webhook():
         print(f"사용자 {user_id}: {user_message}")
         
         # AI 로직으로 메시지 처리
+        ai_logic = get_ai_logic()
         success, response = ai_logic.process_message(user_message, user_id)
         
         # 카카오톡 응답 형식 생성
@@ -195,6 +210,7 @@ def test():
             
             print(f"테스트 - 사용자 {user_id}: {user_message}")
             
+            ai_logic = get_ai_logic()
             success, response = ai_logic.process_message(user_message, user_id)
             
             return jsonify({
