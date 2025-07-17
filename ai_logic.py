@@ -718,13 +718,12 @@ class AILogic:
             else:
                 text = response
             
+            # 이미지 링크를 포함한 텍스트 응답으로 변경
+            text_with_link = f"{text}\n\n📎 이미지 링크: {image_info['url']}"
+            
             return {
-                "type": "basicCard",
-                "title": f"와석초등학교 {image_info['alt']}",
-                "description": text,
-                "thumbnail": {
-                    "imageUrl": image_info["url"]
-                }
+                "type": "text",
+                "text": text_with_link
             }
             
         except Exception as e:
