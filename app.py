@@ -568,11 +568,11 @@ def create_quick_replies(category=None):
 @app.route('/', methods=['GET'])
 def root():
     """루트 엔드포인트"""
-            return jsonify({
-            "status": "ok",
-            "message": "와석초등학교 챗봇 서버가 정상 작동 중입니다.",
-            "timestamp": get_kst_now().isoformat()
-        })
+    return jsonify({
+        "status": "ok",
+        "message": "와석초등학교 챗봇 서버가 정상 작동 중입니다.",
+        "timestamp": get_kst_now().isoformat()
+    })
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
