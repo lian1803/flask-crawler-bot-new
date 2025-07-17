@@ -200,56 +200,143 @@ class AILogic:
                 if user_message_lower == question_lower:
                     return qa
                 
-                # 2. 포함 관계 확인
-                if user_message_lower in question_lower or question_lower in user_message_lower:
-                    score = 0.8
-                    if score > best_score:
-                        best_score = score
-                        best_match = qa
-                    continue
+                # 2. 유치원 관련 질문 특별 처리
+                if "유치원" in user_message_lower:
+                    # 유치원 카테고리인 경우만 고려
+                    if qa.get('category') == '유치원':
+                        # 유치원 관련 키워드 매칭
+                        kindergarten_keywords = [
+                            "운영시간", "교육비", "특성화", "담임", "연락처", "전화번호",
+                            "개학일", "방학일", "졸업식", "행사일", "교육과정", "방과후과정",
+                            "교사면담", "입학문의", "신청방법", "하원", "등원", "체험학습"
+                        ]
+                        
+                        for keyword in kindergarten_keywords:
+                            if keyword in user_message_lower and keyword in question_lower:
+                                score = 0.8  # 높은 점수 부여
+                                if score > best_score:
+                                    best_score = score
+                                    best_match = qa
+                                break
                 
-                # 3. 맥락적 매칭 (새로 추가)
-                context_score = self.calculate_context_score(user_message_lower, question_lower)
-                if context_score > 0:
-                    if context_score > best_score:
-                        best_score = context_score
-                        best_match = qa
-                    continue
+                # 3. 초등학교 관련 질문 특별 처리
+                elif "초등학교" in user_message_lower or ("초등" in user_message_lower and "유치원" not in user_message_lower):
+                    # 초등학교 카테고리인 경우만 고려
+                    if qa.get('category') == '초등':
+                        # 초등학교 관련 키워드 매칭
+                        elementary_keywords = [
+                            "급식", "방과후", "늘봄교실", "상담", "전학", "서류", "발급",
+                            "개학일", "방학일", "시험일", "행사일", "학교시설", "등하교",
+                            "보건실", "정차대", "교실배치도"
+                        ]
+                        
+                        for keyword in elementary_keywords:
+                            if keyword in user_message_lower and keyword in question_lower:
+                                score = 0.8  # 높은 점수 부여
+                                if score > best_score:
+                                    best_score = score
+                                    best_match = qa
+                                break
                 
-                # 4. 단어 기반 매칭
-                score = 0
-                user_words = set(user_message_lower.split())
-                question_words = set(question_lower.split())
+                # 4. 일반적인 키워드 매칭
+                else:
+                    # 중요 키워드가 포함된 경우 점수 계산
+                    keyword_matches = 0
+                    total_keywords = 0
+                    
+                    for keyword in important_keywords:
+                        if keyword in user_message_lower:
+                            total_keywords += 1
+                            if keyword in question_lower:
+                                keyword_matches += 1
+                    
+                    if total_keywords > 0:
+                        score = keyword_matches / total_keywords
+                        if score > best_score and score >= threshold:
+                            best_score = score
+                            best_match = qa
                 
-                # 공통 단어 수
-                common_words = user_words & question_words
-                score += len(common_words) * 0.4
-                
-                # 중요 키워드 가중치
-                for keyword in important_keywords:
-                    if keyword in user_message_lower and keyword in question_lower:
-                        score += 0.6
-                        break
-                
-                # 부분 문자열 매칭
-                for word in user_words:
-                    if len(word) > 2:
-                        if word in question_lower:
-                            score += 0.2
-                        # 유사한 단어 매칭 (예: "개학"과 "개학일")
-                        for q_word in question_words:
-                            if len(q_word) > 2 and (word in q_word or q_word in word):
-                                score += 0.1
-                
-                if score > best_score:
-                    best_score = score
-                    best_match = qa
+                # 5. 부분 문자열 매칭 (낮은 우선순위)
+                if not best_match:
+                    if user_message_lower in question_lower or question_lower in user_message_lower:
+                        score = 0.3
+                        if score > best_score:
+                            best_score = score
+                            best_match = qa
             
-            if best_score >= threshold:
-                return best_match
+            # 6. 특별한 케이스 처리
+            if not best_match:
+                # 유치원 관련 질문들에 대한 특별 처리
+                if "유치원" in user_message_lower:
+                    if "운영시간" in user_message_lower or "시간" in user_message_lower:
+                        for qa in qa_list:
+                            if "운영 시간" in qa['question'] and qa.get('category') == '유치원':
+                                return qa
+                    elif "교육비" in user_message_lower or "비용" in user_message_lower:
+                        for qa in qa_list:
+                            if "교육비" in qa['question'] and qa.get('category') == '유치원':
+                                return qa
+                    elif "담임" in user_message_lower or "연락처" in user_message_lower or "전화번호" in user_message_lower:
+                        for qa in qa_list:
+                            if "담임 선생님 연락처" in qa['question'] and qa.get('category') == '유치원':
+                                return qa
+                    elif "개학일" in user_message_lower:
+                        for qa in qa_list:
+                            if "개학일" in qa['question'] and qa.get('category') == '유치원':
+                                return qa
+                    elif "방학일" in user_message_lower:
+                        for qa in qa_list:
+                            if "방학" in qa['question'] and qa.get('category') == '유치원':
+                                return qa
+                    elif "졸업식" in user_message_lower:
+                        for qa in qa_list:
+                            if "졸업식" in qa['question'] and qa.get('category') == '유치원':
+                                return qa
+                    elif "행사일" in user_message_lower:
+                        for qa in qa_list:
+                            if "행사" in qa['question'] and qa.get('category') == '유치원':
+                                return qa
+                
+                # 초등학교 관련 질문들에 대한 특별 처리
+                elif "초등학교" in user_message_lower or ("초등" in user_message_lower and "유치원" not in user_message_lower):
+                    if "급식" in user_message_lower:
+                        for qa in qa_list:
+                            if "급식" in qa['question'] and qa.get('category') == '초등':
+                                return qa
+                    elif "방과후" in user_message_lower:
+                        for qa in qa_list:
+                            if "방과후" in qa['question'] and qa.get('category') == '초등':
+                                return qa
+                    elif "상담" in user_message_lower:
+                        for qa in qa_list:
+                            if "상담" in qa['question'] and qa.get('category') == '초등':
+                                return qa
+                    elif "전학" in user_message_lower:
+                        for qa in qa_list:
+                            if "전학" in qa['question'] and qa.get('category') == '초등':
+                                return qa
+                    elif "개학일" in user_message_lower:
+                        for qa in qa_list:
+                            if "개학일" in qa['question'] and qa.get('category') == '초등':
+                                return qa
+                    elif "방학일" in user_message_lower:
+                        for qa in qa_list:
+                            if "방학" in qa['question'] and qa.get('category') == '초등':
+                                return qa
+                    elif "시험일" in user_message_lower:
+                        for qa in qa_list:
+                            if "시험" in qa['question'] and qa.get('category') == '초등':
+                                return qa
+                    elif "행사일" in user_message_lower:
+                        for qa in qa_list:
+                            if "행사" in qa['question'] and qa.get('category') == '초등':
+                                return qa
+            
+            return best_match if best_score >= threshold else None
+            
         except Exception as e:
             print(f"QA 매칭 중 오류: {e}")
-        return None
+            return None
     
     def calculate_context_score(self, user_message: str, question: str) -> float:
         """맥락적 매칭 점수 계산"""
@@ -429,8 +516,7 @@ class AILogic:
             "고마워요": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
             
             # 작별 인사
-            "잘 있어": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요.",
-            "잘 있어요": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요."
+            "잘 있어": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요."
         }
         
         # 부분 매칭으로 빠른 응답 찾기
@@ -476,38 +562,112 @@ class AILogic:
             self.db.save_conversation(user_id, user_message, response)
             return True, response
         
-        # 3. 간단한 키워드 기반 답변 (우선순위 높음)
+        # 3. 유치원 관련 질문 특별 처리 (새로 추가)
+        if "유치원" in user_message:
+            user_message_lower = user_message.lower()
+            
+            # 유치원 운영시간 관련
+            if any(keyword in user_message_lower for keyword in ["운영시간", "운영 시간", "시간", "몇시"]):
+                response = "교육과정 시간은 오전 9시~13시 30분까지\n방과후과정은 오전 8시~19시까지"
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 유치원 교육비 관련
+            elif any(keyword in user_message_lower for keyword in ["교육비", "비용", "얼마", "돈"]):
+                response = "병설유치원은 입학비, 방과후과정비, 교육비, 현장학습비, 방과후특성화비 모두 무상으로 지원됩니다."
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 유치원 담임 선생님 연락처
+            elif any(keyword in user_message_lower for keyword in ["담임", "연락처", "전화번호", "연락"]):
+                response = "바른반: 070-7525-7763\n슬기반 070-7525-7755\n꿈반 070-7525-7849\n자람반 070-7525-7560\n원무실 031-957-8715"
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 유치원 개학일
+            elif "개학일" in user_message_lower:
+                response = "유치원 개학일은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 3월 초에 1학기 개학이, 8월 말~9월 초에 2학기 개학이 진행됩니다. 정확한 개학일은 원무실(031-957-8715)로 문의해주세요."
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 유치원 방학일
+            elif "방학일" in user_message_lower or "방학" in user_message_lower:
+                response = "유치원 방학은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 7월 말~8월 초에 여름방학이, 12월 말~2월 말에 겨울방학이 진행됩니다. 정확한 방학일은 원무실(031-957-8715)로 문의해주세요."
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 유치원 졸업식
+            elif "졸업식" in user_message_lower:
+                response = "유치원 졸업식은 보통 2월 말에 진행됩니다. 정확한 일정은 학사일정을 참고해주시거나 원무실(031-957-8715)로 문의해주세요."
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 유치원 행사일
+            elif "행사일" in user_message_lower or "행사" in user_message_lower:
+                response = "유치원에서는 다양한 행사가 진행됩니다. 입학식, 졸업식, 현장학습, 학부모 참여수업 등이 있으며, 정확한 일정은 학사일정을 참고해주시거나 원무실(031-957-8715)로 문의해주세요."
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+        
+        # 4. 초등학교 관련 질문 특별 처리 (새로 추가)
+        elif "초등학교" in user_message or ("초등" in user_message and "유치원" not in user_message):
+            user_message_lower = user_message.lower()
+            
+            # 초등학교 개학일
+            if "개학일" in user_message_lower:
+                response = "개학일은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 3월 초에 1학기 개학이, 8월 말~9월 초에 2학기 개학이 진행됩니다. 정확한 개학일은 교무실(031-957-8715)로 문의해주세요. 개학일에는 학생들의 건강상태를 확인하고 안전한 학교생활을 위한 안내가 이루어집니다. 더 궁금하신 점이 있으시면 언제든 말씀해주세요!"
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 초등학교 방학일
+            elif "방학일" in user_message_lower or "방학" in user_message_lower:
+                response = "방학은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 7월 말~8월 초에 여름방학이, 12월 말~2월 말에 겨울방학이 진행됩니다. 정확한 방학일은 교무실(031-957-8715)로 문의해주세요."
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 초등학교 시험일
+            elif "시험일" in user_message_lower or "시험" in user_message_lower:
+                response = "시험일은 학년별로 다르며, 보통 1학기 중간고사(5월), 1학기 기말고사(7월), 2학기 중간고사(10월), 2학기 기말고사(12월)에 진행됩니다. 정확한 시험일은 담임선생님께 문의해주세요."
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+            
+            # 초등학교 행사일
+            elif "행사일" in user_message_lower or "행사" in user_message_lower:
+                response = "초등학교에서는 다양한 행사가 진행됩니다. 입학식, 졸업식, 체육대회, 학예회, 현장학습 등이 있으며, 정확한 일정은 학사일정을 참고해주시거나 교무실(031-957-8715)로 문의해주세요."
+                self.db.save_conversation(user_id, user_message, response)
+                return True, response
+        
+        # 5. 간단한 키워드 기반 답변 (우선순위 높음) - 더 상세하고 친근하게 개선
         simple_responses = {
-            # 인사 관련
-            "안녕": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
-            "안녕하세요": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
-            "안녕!": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
-            "안녕~": "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?",
+            # 인사 관련 - 더 친근하고 상세하게
+            "안녕": "안녕하세요! 👋 와석초등학교 챗봇입니다. 유치원과 초등학교 관련 정보를 도와드려요! 무엇을 궁금해하시나요?",
+            "안녕하세요": "안녕하세요! 👋 와석초등학교 챗봇입니다. 유치원과 초등학교 관련 정보를 도와드려요! 무엇을 궁금해하시나요?",
+            "안녕!": "안녕하세요! 👋 와석초등학교 챗봇입니다. 유치원과 초등학교 관련 정보를 도와드려요! 무엇을 궁금해하시나요?",
+            "안녕~": "안녕하세요! 👋 와석초등학교 챗봇입니다. 유치원과 초등학교 관련 정보를 도와드려요! 무엇을 궁금해하시나요?",
             
-            # 도움 요청 관련
-            "도움": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
-            "도움말": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
-            "도움말이 필요해": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
-            "도움이 필요해": "와석초등학교 관련 질문에 답변해드립니다. 급식, 방과후, 상담, 전학 등에 대해 물어보세요.",
+            # 도움 요청 관련 - 더 구체적으로
+            "도움": "네! 와석초등학교 관련 정보를 도와드려요! 📚\n\n• 유치원: 운영시간, 교육비, 특성화 프로그램\n• 초등학교: 급식, 방과후, 상담, 전학\n• 공통: 학사일정, 학교시설, 등하교\n\n어떤 정보가 필요하신가요?",
+            "도움말": "네! 와석초등학교 관련 정보를 도와드려요! 📚\n\n• 유치원: 운영시간, 교육비, 특성화 프로그램\n• 초등학교: 급식, 방과후, 상담, 전학\n• 공통: 학사일정, 학교시설, 등하교\n\n어떤 정보가 필요하신가요?",
+            "도움말이 필요해": "네! 와석초등학교 관련 정보를 도와드려요! 📚\n\n• 유치원: 운영시간, 교육비, 특성화 프로그램\n• 초등학교: 급식, 방과후, 상담, 전학\n• 공통: 학사일정, 학교시설, 등하교\n\n어떤 정보가 필요하신가요?",
+            "도움이 필요해": "네! 와석초등학교 관련 정보를 도와드려요! 📚\n\n• 유치원: 운영시간, 교육비, 특성화 프로그램\n• 초등학교: 급식, 방과후, 상담, 전학\n• 공통: 학사일정, 학교시설, 등하교\n\n어떤 정보가 필요하신가요?",
             
-            # 감사 관련
-            "감사": "도움이 되어서 기쁩니다! 다른 질문이 있으시면 언제든 말씀해주세요.",
-            "감사합니다": "도움이 되어서 기쁩니다! 다른 질문이 있으시면 언제든 말씀해주세요.",
-            "고마워": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
-            "고마워요": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
-            "고맙습니다": "천만에요! 더 궁금한 점이 있으시면 언제든 물어보세요.",
+            # 감사 관련 - 더 따뜻하게
+            "감사": "도움이 되어서 정말 기쁩니다! 😊 다른 궁금한 점이 있으시면 언제든 편하게 말씀해주세요. 와석초등학교 챗봇이 항상 도와드릴게요!",
+            "감사합니다": "도움이 되어서 정말 기쁩니다! 😊 다른 궁금한 점이 있으시면 언제든 편하게 말씀해주세요. 와석초등학교 챗봇이 항상 도와드릴게요!",
+            "고마워": "천만에요! 😊 더 궁금한 점이 있으시면 언제든 편하게 물어보세요. 와석초등학교 챗봇이 친구처럼 도와드릴게요!",
+            "고마워요": "천만에요! 😊 더 궁금한 점이 있으시면 언제든 편하게 물어보세요. 와석초등학교 챗봇이 친구처럼 도와드릴게요!",
+            "고맙습니다": "천만에요! 😊 더 궁금한 점이 있으시면 언제든 편하게 물어보세요. 와석초등학교 챗봇이 친구처럼 도와드릴게요!",
             
-            # 기타 일반적인 질문
-            "뭐해": "와석초등학교 관련 질문에 답변하고 있어요. 무엇을 도와드릴까요?",
-            "뭐하고 있어": "와석초등학교 관련 질문에 답변하고 있어요. 무엇을 도와드릴까요?",
-            "뭐해?": "와석초등학교 관련 질문에 답변하고 있어요. 무엇을 도와드릴까요?",
-            "뭐하고 있어?": "와석초등학교 관련 질문에 답변하고 있어요. 무엇을 도와드릴까요?",
+            # 기타 일반적인 질문 - 더 친근하게
+            "뭐해": "와석초등학교 관련 질문에 답변하고 있어요! 📚 유치원과 초등학교 정보를 도와드리는 중이에요. 무엇을 궁금해하시나요?",
+            "뭐하고 있어": "와석초등학교 관련 질문에 답변하고 있어요! 📚 유치원과 초등학교 정보를 도와드리는 중이에요. 무엇을 궁금해하시나요?",
+            "뭐해?": "와석초등학교 관련 질문에 답변하고 있어요! 📚 유치원과 초등학교 정보를 도와드리는 중이에요. 무엇을 궁금해하시나요?",
+            "뭐하고 있어?": "와석초등학교 관련 질문에 답변하고 있어요! 📚 유치원과 초등학교 정보를 도와드리는 중이에요. 무엇을 궁금해하시나요?",
             
-            # 작별 인사
-            "잘 있어": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요.",
-            "잘 있어요": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요.",
-            "잘 있어~": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요.",
-            "잘 있어요~": "안녕히 가세요! 또 궁금한 점이 있으시면 언제든 말씀해주세요."
+            # 작별 인사 - 더 따뜻하게
+            "잘 있어": "안녕히 가세요! 👋 또 궁금한 점이 있으시면 언제든 편하게 말씀해주세요. 와석초등학교 챗봇이 항상 기다리고 있을게요! 😊",
+            "잘 있어요": "안녕히 가세요! 👋 또 궁금한 점이 있으시면 언제든 편하게 말씀해주세요. 와석초등학교 챗봇이 항상 기다리고 있을게요! 😊",
+            "잘 있어~": "안녕히 가세요! 👋 또 궁금한 점이 있으시면 언제든 편하게 말씀해주세요. 와석초등학교 챗봇이 항상 기다리고 있을게요! 😊",
+            "잘 있어요~": "안녕히 가세요! 👋 또 궁금한 점이 있으시면 언제든 편하게 말씀해주세요. 와석초등학교 챗봇이 항상 기다리고 있을게요! 😊"
         }
         
         # 부분 매칭으로 간단한 응답 찾기 (우선순위 높게 처리)
@@ -516,7 +676,7 @@ class AILogic:
                 self.db.save_conversation(user_id, user_message, response)
                 return True, response
         
-        # 4. QA 데이터베이스에서 유사한 질문 찾기
+        # 6. QA 데이터베이스에서 유사한 질문 찾기
         qa_match = self.find_qa_match(user_message)
         if qa_match:
             response = qa_match['answer']
@@ -536,7 +696,7 @@ class AILogic:
             self.db.save_conversation(user_id, user_message, response)
             return True, response
         
-        # 5. OpenAI를 통한 응답 (마지막 수단, 타임아웃 방지를 위해 간단하게)
+        # 7. OpenAI를 통한 응답 (마지막 수단, 타임아웃 방지를 위해 간단하게)
         return self.call_openai_api(user_message, user_id)
     
     def call_openai_api(self, user_message: str, user_id: str) -> Tuple[bool, str]:
@@ -571,99 +731,139 @@ class AILogic:
     def add_image_to_response(self, response: str, qa_match: Dict) -> dict:
         """이미지 첨부 응답에 실제 이미지 URL 추가 (카카오톡 챗봇용)"""
         try:
-            # 질문 카테고리에 따른 이미지 매핑 (새로운 이미지 사용)
+            # 질문 카테고리에 따른 이미지 매핑 (실제 이미지 파일명 사용)
             image_mapping = {
                 "학사일정": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image1.jpeg",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림1.jpg",
                     "alt": "학사일정"
                 },
                 "교실 배치도": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image2.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림2.png",
                     "alt": "교실 배치도"
                 },
                 "정차대": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image3.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림3.png",
                     "alt": "정차대"
                 },
                 "학교시설": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image4.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림4.png",
                     "alt": "학교시설"
                 },
                 "급식": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image5.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림5.png",
                     "alt": "급식"
                 },
                 "방과후": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image7.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림6.jpg",
                     "alt": "방과후"
                 },
                 "상담": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image8.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림7.png",
                     "alt": "상담"
                 },
                 "전학": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image9.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림8.png",
                     "alt": "전학"
                 },
                 "유치원": {
-                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/image10.png",
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림9.jpg",
                     "alt": "유치원"
+                },
+                "경조사": {
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림10.png",
+                    "alt": "경조사"
+                },
+                "늘봄학교": {
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림11.png",
+                    "alt": "늘봄학교"
+                },
+                "시설이용": {
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림12.png",
+                    "alt": "시설이용"
+                },
+                "방과후강좌": {
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림13.png",
+                    "alt": "방과후강좌"
+                },
+                "정차대위치": {
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림14.png",
+                    "alt": "정차대위치"
+                },
+                "학사일정상세": {
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림15.png",
+                    "alt": "학사일정상세"
+                },
+                "전학절차": {
+                    "url": "https://raw.githubusercontent.com/lian1803/flask-crawler-bot-new/main/static/images/그림16.png",
+                    "alt": "전학절차"
                 }
             }
             
-            # 질문 내용에 따른 이미지 선택 (실제 이미지에 맞게 수정)
+            # 질문 내용에 따른 이미지 선택 (더 정확한 매칭)
             question_lower = qa_match['question'].lower()
+            category = qa_match.get('category', '').lower()
             
-            if "학사일정" in response or "개학" in question_lower or "방학" in question_lower:
-                image_info = image_mapping["학사일정"]
+            # 카테고리별 우선 매칭
+            if category == "유치원":
+                if "경조사" in question_lower or "휴가" in question_lower:
+                    image_info = image_mapping["경조사"]
+                elif "학사일정" in question_lower or "개학" in question_lower or "방학" in question_lower:
+                    image_info = image_mapping["학사일정상세"]
+                else:
+                    image_info = image_mapping["유치원"]
             elif "교실" in question_lower or "배치" in question_lower:
                 image_info = image_mapping["교실 배치도"]
-            elif "정차" in question_lower or "버스" in question_lower:
-                image_info = image_mapping["정차대"]
+            elif "정차" in question_lower or "버스" in question_lower or "등하교" in question_lower:
+                image_info = image_mapping["정차대위치"]
             elif "급식" in question_lower or "식단" in question_lower or "밥" in question_lower or "점심" in question_lower:
                 image_info = image_mapping["급식"]
-            elif "방과후" in question_lower or "늘봄" in question_lower or "돌봄" in question_lower:
-                image_info = image_mapping["방과후"]
+            elif "방과후" in question_lower:
+                if "강좌" in question_lower or "요일" in question_lower:
+                    image_info = image_mapping["방과후강좌"]
+                else:
+                    image_info = image_mapping["방과후"]
+            elif "늘봄" in question_lower:
+                image_info = image_mapping["늘봄학교"]
             elif "상담" in question_lower or "문의" in question_lower:
                 image_info = image_mapping["상담"]
             elif "전학" in question_lower or "전입" in question_lower or "전출" in question_lower:
-                image_info = image_mapping["전학"]
-            elif "유치원" in question_lower or "유아" in question_lower:
-                image_info = image_mapping["유치원"]
-            elif "시설" in question_lower:
-                image_info = image_mapping["학교시설"]
+                image_info = image_mapping["전학절차"]
+            elif "시설" in question_lower or "이용" in question_lower:
+                image_info = image_mapping["시설이용"]
+            elif "학사일정" in question_lower or "개학" in question_lower or "방학" in question_lower:
+                image_info = image_mapping["학사일정상세"]
             else:
                 # 기본적으로 학사일정 이미지 사용
                 image_info = image_mapping["학사일정"]
             
-            # 카카오톡 챗봇용 이미지 응답 구조
-            # response에서 "이미지 파일 첨부" 또는 "이미지 파일 참조" 텍스트를 실제 설명으로 변경
+            # 응답 텍스트 개선
             if "이미지 파일 첨부" in response or "이미지 파일 참조" in response:
+                # 더 상세하고 친근한 설명으로 변경
                 if "학사일정" in question_lower or "개학" in question_lower or "방학" in question_lower:
-                    text = "와석초등학교 학사일정입니다. 아래 이미지를 참고해주세요."
+                    text = "와석초등학교 학사일정입니다. 📅 아래 이미지에서 정확한 일정을 확인해주세요."
                 elif "교실" in question_lower or "배치" in question_lower:
-                    text = "와석초등학교 교실 배치도입니다. 아래 이미지를 참고해주세요."
+                    text = "와석초등학교 교실 배치도입니다. 🏫 아래 이미지에서 교실 위치를 확인해주세요."
                 elif "정차" in question_lower or "버스" in question_lower:
-                    text = "와석초등학교 정차대 안내입니다. 아래 이미지를 참고해주세요."
-                elif "급식" in question_lower or "식단" in question_lower or "밥" in question_lower or "점심" in question_lower:
-                    text = "와석초등학교 급식 정보입니다. 아래 이미지를 참고해주세요."
-                elif "방과후" in question_lower or "늘봄" in question_lower or "돌봄" in question_lower:
-                    text = "와석초등학교 방과후 프로그램 안내입니다. 아래 이미지를 참고해주세요."
+                    text = "와석초등학교 정차대 안내입니다. 🚌 아래 이미지에서 정차대 위치를 확인해주세요."
+                elif "급식" in question_lower or "식단" in question_lower:
+                    text = "와석초등학교 급식 정보입니다. 🍽️ 아래 이미지에서 급식 메뉴를 확인해주세요."
+                elif "방과후" in question_lower:
+                    text = "와석초등학교 방과후 프로그램 안내입니다. 🎨 아래 이미지에서 프로그램 정보를 확인해주세요."
                 elif "상담" in question_lower or "문의" in question_lower:
-                    text = "와석초등학교 상담 안내입니다. 아래 이미지를 참고해주세요."
-                elif "전학" in question_lower or "전입" in question_lower or "전출" in question_lower:
-                    text = "와석초등학교 전학 안내입니다. 아래 이미지를 참고해주세요."
-                elif "유치원" in question_lower or "유아" in question_lower:
-                    text = "와석초등학교 유치원 안내입니다. 아래 이미지를 참고해주세요."
+                    text = "와석초등학교 상담 안내입니다. 📞 아래 이미지에서 상담 방법을 확인해주세요."
+                elif "전학" in question_lower:
+                    text = "와석초등학교 전학 안내입니다. 🔄 아래 이미지에서 전학 절차를 확인해주세요."
+                elif "유치원" in question_lower:
+                    text = "와석초등학교 유치원 안내입니다. 👶 아래 이미지에서 유치원 정보를 확인해주세요."
                 elif "시설" in question_lower:
-                    text = "와석초등학교 시설 이용시간입니다. 아래 이미지를 참고해주세요."
+                    text = "와석초등학교 시설 이용 안내입니다. 🏢 아래 이미지에서 시설 이용 방법을 확인해주세요."
                 else:
-                    text = "와석초등학교 관련 정보입니다. 아래 이미지를 참고해주세요."
+                    text = "와석초등학교 관련 정보입니다. 📋 아래 이미지를 참고해주세요."
             else:
                 text = response
             
-            # 이미지 링크를 포함한 텍스트 응답으로 변경
-            text_with_link = f"{text}\n\n📎 이미지 링크: {image_info['url']}"
+            # 이미지 링크를 포함한 텍스트 응답으로 변경 (더 친근하게)
+            text_with_link = f"{text}\n\n📎 자세한 내용은 아래 링크에서 확인하세요:\n{image_info['url']}"
             
             return {
                 "type": "text",

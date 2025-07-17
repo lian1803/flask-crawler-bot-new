@@ -2,7 +2,11 @@ from flask import Flask, request, jsonify
 import json
 import traceback
 import sys
+import os
+import subprocess
 from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from config import PORT, DEBUG, KAKAO_BOT_TOKEN
 from ai_logic import AILogic
 from database import DatabaseManager
@@ -12,6 +16,10 @@ app = Flask(__name__)
 # 지연 초기화를 위한 전역 변수
 ai_logic = None
 db = None
+
+# 스케줄러 초기화
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 def get_ai_logic():
     """AI 로직 인스턴스 가져오기 (지연 초기화)"""
@@ -26,6 +34,58 @@ def get_db():
     if db is None:
         db = DatabaseManager()
     return db
+
+def run_crawler():
+    """크롤러 실행 함수"""
+    try:
+        print("🔄 자동 크롤링 시작...")
+        result = subprocess.run(['python', 'incremental_notice_crawler.py'], 
+                              capture_output=True, text=True, timeout=300)
+        print(f"크롤링 결과: {result.stdout}")
+        if result.stderr:
+            print(f"크롤링 오류: {result.stderr}")
+        
+        # 크롤링 후 GitHub에 자동 커밋
+        commit_to_github()
+        
+    except Exception as e:
+        print(f"크롤링 실행 오류: {e}")
+
+def commit_to_github():
+    """GitHub에 자동 커밋"""
+    try:
+        print("📝 GitHub 자동 커밋 시작...")
+        
+        # Git 상태 확인
+        subprocess.run(['git', 'add', '.'], check=True)
+        
+        # 변경사항이 있는지 확인
+        result = subprocess.run(['git', 'status', '--porcelain'], 
+                              capture_output=True, text=True)
+        
+        if result.stdout.strip():
+            # 변경사항이 있으면 커밋
+            commit_message = f"자동 크롤링 업데이트 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            subprocess.run(['git', 'commit', '-m', commit_message], check=True)
+            subprocess.run(['git', 'push'], check=True)
+            print(f"✅ GitHub 커밋 완료: {commit_message}")
+        else:
+            print("📝 변경사항이 없어 커밋을 건너뜁니다.")
+            
+    except Exception as e:
+        print(f"GitHub 커밋 오류: {e}")
+
+def setup_scheduler():
+    """스케줄러 설정"""
+    # 매일 오전 6시에 크롤링 실행
+    scheduler.add_job(
+        func=run_crawler,
+        trigger=CronTrigger(hour=6, minute=0),
+        id='daily_crawler',
+        name='매일 자동 크롤링',
+        replace_existing=True
+    )
+    print("⏰ 자동 크롤링 스케줄러 설정 완료 (매일 오전 6시)")
 
 def exception_handler(exception):
     """예외 처리 함수"""
@@ -701,7 +761,49 @@ def get_stats():
         exception_handler(e)
         return jsonify({"error": str(e)}), 500
 
+@app.route('/crawl', methods=['POST'])
+def manual_crawl():
+    """수동 크롤링 실행 엔드포인트"""
+    try:
+        print("🔄 수동 크롤링 요청 받음")
+        run_crawler()
+        return jsonify({
+            "status": "success",
+            "message": "크롤링이 성공적으로 실행되었습니다.",
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        exception_handler(e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/scheduler/status', methods=['GET'])
+def scheduler_status():
+    """스케줄러 상태 확인 엔드포인트"""
+    try:
+        jobs = scheduler.get_jobs()
+        job_info = []
+        for job in jobs:
+            job_info.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
+                "trigger": str(job.trigger)
+            })
+        
+        return jsonify({
+            "scheduler_running": scheduler.running,
+            "jobs": job_info,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        exception_handler(e)
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     print(f"와석초등학교 챗봇 서버 시작 - 포트: {PORT}")
     print(f"디버그 모드: {DEBUG}")
+    
+    # 스케줄러 설정
+    setup_scheduler()
+    
     app.run(host='0.0.0.0', port=PORT, debug=DEBUG) 

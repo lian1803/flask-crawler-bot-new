@@ -67,8 +67,20 @@ def setup_driver():
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    service = Service()
-    driver = webdriver.Chrome(options=chrome_options)
+    chrome_options.add_argument("--disable-web-security")
+    chrome_options.add_argument("--allow-running-insecure-content")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-plugins")
+    chrome_options.add_argument("--disable-images")
+    chrome_options.add_argument("--disable-javascript")
+    
+    # Render 환경에서 ChromeDriver 경로 설정
+    if os.path.exists('/usr/local/bin/chromedriver'):
+        service = Service('/usr/local/bin/chromedriver')
+    else:
+        service = Service()
+    
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.implicitly_wait(3)
     return driver
 
@@ -203,7 +215,7 @@ def crawl_incremental_notices(max_new_notices=50):
 def get_latest_meal_date():
     """DB에서 최신 급식 날짜 조회"""
     try:
-        conn = sqlite3.connect('../school_data.db')
+        conn = sqlite3.connect('school_data.db')
         cursor = conn.cursor()
         cursor.execute("SELECT MAX(date) FROM meals")
         latest_date = cursor.fetchone()[0]
@@ -216,7 +228,7 @@ def get_latest_meal_date():
 def save_meals_to_db(meals_data):
     """급식 데이터를 DB에 저장"""
     try:
-        conn = sqlite3.connect('../school_data.db')
+        conn = sqlite3.connect('school_data.db')
         cursor = conn.cursor()
         
         # 기존 데이터 확인을 위한 날짜 목록
