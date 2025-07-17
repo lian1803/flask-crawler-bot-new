@@ -9,8 +9,15 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, NoSuchElementException
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import os
+
+# 한국 시간대 설정 (UTC+9) - 표시용만
+KST = timezone(timedelta(hours=9))
+
+def get_kst_now():
+    """현재 한국 시간 반환 (표시용)"""
+    return datetime.now(KST)
 
 def get_latest_notice_date():
     """DB에서 최신 공지사항 날짜 조회"""

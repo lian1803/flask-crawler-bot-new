@@ -1,10 +1,17 @@
 import openai
 import json
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 from config import OPENAI_API_KEY, OPENAI_MODEL, TEMPERATURE, MAX_TOKENS, TOP_P, BAN_WORDS
 from database import DatabaseManager
+
+# 한국 시간대 설정 (UTC+9)
+KST = timezone(timedelta(hours=9))
+
+def get_kst_now():
+    """현재 한국 시간 반환"""
+    return datetime.now(KST)
 
 class AILogic:
     def __init__(self):
@@ -415,7 +422,7 @@ class AILogic:
     
     def get_date_from_message(self, text: str) -> Optional[str]:
         """메시지에서 날짜 추출"""
-        today = datetime.now()
+        today = get_kst_now()
         
         # 상대적 날짜 표현
         if "오늘" in text:
@@ -551,7 +558,7 @@ class AILogic:
             
             # 날짜가 명시되지 않은 급식 관련 질문은 "오늘"로 간주하여 실시간 조회
             if any(keyword in user_message for keyword in ["오늘", "지금", "현재", "이번", "이번주"]):
-                today = datetime.now().strftime("%Y-%m-%d")
+                today = get_kst_now().strftime("%Y-%m-%d")
                 response = self.get_meal_info(today)
                 self.db.save_conversation(user_id, user_message, response)
                 return True, response

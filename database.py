@@ -1,7 +1,14 @@
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional
+
+# 한국 시간대 설정 (UTC+9) - 표시용만
+KST = timezone(timedelta(hours=9))
+
+def get_kst_now():
+    """현재 한국 시간 반환 (표시용)"""
+    return datetime.now(KST)
 
 class DatabaseManager:
     def __init__(self, db_path: str = "school_data.db"):

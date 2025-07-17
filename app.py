@@ -4,12 +4,19 @@ import traceback
 import sys
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from config import PORT, DEBUG, KAKAO_BOT_TOKEN
 from ai_logic import AILogic
 from database import DatabaseManager
+
+# 한국 시간대 설정 (UTC+9)
+KST = timezone(timedelta(hours=9))
+
+def get_kst_now():
+    """현재 한국 시간 반환"""
+    return datetime.now(KST)
 
 app = Flask(__name__)
 
@@ -77,15 +84,15 @@ def commit_to_github():
 
 def setup_scheduler():
     """스케줄러 설정"""
-    # 매일 오전 6시에 크롤링 실행
+    # 매일 오전 6시(한국 시간)에 크롤링 실행
     scheduler.add_job(
         func=run_crawler,
-        trigger=CronTrigger(hour=6, minute=0),
+        trigger=CronTrigger(hour=6, minute=0, timezone=KST),
         id='daily_crawler',
         name='매일 자동 크롤링',
         replace_existing=True
     )
-    print("⏰ 자동 크롤링 스케줄러 설정 완료 (매일 오전 6시)")
+    print("⏰ 자동 크롤링 스케줄러 설정 완료 (매일 오전 6시 KST)")
 
 def exception_handler(exception):
     """예외 처리 함수"""
@@ -561,11 +568,11 @@ def create_quick_replies(category=None):
 @app.route('/', methods=['GET'])
 def root():
     """루트 엔드포인트"""
-    return jsonify({
-        "status": "ok",
-        "message": "와석초등학교 챗봇 서버가 정상 작동 중입니다.",
-        "timestamp": datetime.now().isoformat()
-    })
+            return jsonify({
+            "status": "ok",
+            "message": "와석초등학교 챗봇 서버가 정상 작동 중입니다.",
+            "timestamp": get_kst_now().isoformat()
+        })
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -754,7 +761,7 @@ def get_stats():
             "qa_data_count": qa_count,
             "recent_conversations": len(test_history),
             "server_status": "running",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": get_kst_now().isoformat()
         })
         
     except Exception as e:
@@ -793,7 +800,7 @@ def scheduler_status():
         return jsonify({
             "scheduler_running": scheduler.running,
             "jobs": job_info,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": get_kst_now().isoformat()
         })
     except Exception as e:
         exception_handler(e)
