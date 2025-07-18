@@ -384,30 +384,21 @@ def webhook():
         
         print(f"사용자 {user_id}: {user_message}")
         
-        # AI 로직으로 메시지 처리 (타임아웃 방지)
-        try:
-            ai_logic = get_ai_logic()
-            success, response = ai_logic.process_message(user_message, user_id)
-            
-            # 텍스트 응답으로 통일
-            if isinstance(response, dict):
-                text = response.get("text", str(response))
-            else:
-                text = str(response)
-                
-        except Exception as ai_error:
-            print(f"AI 로직 오류: {ai_error}")
-            text = "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?"
-        
         # 사용자 메시지에 따른 QuickReplies 결정 (엑셀 구조 기반)
         quick_replies_category = None
+        text = None  # 기본 텍스트 초기화
         
-        # 메인 카테고리 키워드 확인
-        if user_message in ["유치원", "초등학교", "메인메뉴"]:
-            if user_message == "메인메뉴":
-                quick_replies_category = None  # 메인 메뉴
+        # 메인 카테고리 선택 시 간단한 안내 메시지 (AI 로직 건너뛰기)
+        if user_message in ["유치원", "초등학교"]:
+            quick_replies_category = user_message
+            if user_message == "유치원":
+                text = "유치원 관련 궁금하신 점을 선택해주세요."
             else:
-                quick_replies_category = user_message
+                text = "초등학교 관련 궁금하신 점을 선택해주세요."
+        
+        # 메인메뉴 처리
+        elif user_message == "메인메뉴":
+            quick_replies_category = None  # 메인 메뉴
         
         # 엑셀 시트명과 정확히 일치하는 카테고리들
         elif user_message in ["유치원_강화", "유치원운영시간", "유치원방과후", "유치원상담문의", 
@@ -415,14 +406,21 @@ def webhook():
                              "방과후", "상담문의", "초등학교_강화"]:
             quick_replies_category = user_message
         
-        # 메인 카테고리 선택 시 간단한 안내 메시지
-        elif user_message in ["유치원", "초등학교"]:
-            quick_replies_category = user_message
-            # 간단한 안내 메시지로 변경
-            if user_message == "유치원":
-                text = "유치원 관련 궁금하신 점을 선택해주세요."
-            else:
-                text = "초등학교 관련 궁금하신 점을 선택해주세요."
+        # AI 로직으로 메시지 처리 (메뉴가 아닌 경우에만)
+        if text is None:
+            try:
+                ai_logic = get_ai_logic()
+                success, response = ai_logic.process_message(user_message, user_id)
+                
+                # 텍스트 응답으로 통일
+                if isinstance(response, dict):
+                    text = response.get("text", str(response))
+                else:
+                    text = str(response)
+                    
+            except Exception as ai_error:
+                print(f"AI 로직 오류: {ai_error}")
+                text = "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?"
         
         # 특별한 응답 메시지들 (QuickReplies 없이) - 엑셀 구조 기반
         special_responses = [
