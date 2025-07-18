@@ -351,13 +351,13 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 엑셀 시트명과 정확히 일치하는 카테고리들 - 질문 버튼으로 표시
+    # 엑셀 시트명과 정확히 일치하는 카테고리들 - 질문 리스트 + 번호 버튼으로 표시
     elif category in ["유치원_강화", "유치원운영시간", "유치원방과후", "유치원상담문의", 
                      "강화된_QA_데이터", "원본_QA_데이터", "더보기", 
                      "방과후", "상담문의", "초등학교_강화", "학교시설", "등하교교통", 
                      "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"]:
         
-        # 카테고리별 질문들을 버튼으로 생성
+        # 카테고리별 질문들을 번호 버튼으로 생성
         try:
             with open('category_questions.json', 'r', encoding='utf-8') as f:
                 category_questions = json.load(f)
@@ -366,13 +366,11 @@ def create_quick_replies(category=None):
                 questions = category_questions[category]
                 quick_replies = []
                 
-                # 질문들을 버튼으로 변환 (세로 배치를 위해 긴 텍스트로)
-                for question in questions:
-                    # 세로 배치를 위해 질문 앞에 공백 추가
-                    label = f"  {question}"
+                # 질문들을 번호 버튼으로 변환 (최대 10개)
+                for i, question in enumerate(questions[:10], 1):
                     quick_replies.append({
                         "action": "message",
-                        "label": label,
+                        "label": f"{i}번",
                         "messageText": question
                     })
                 
@@ -471,14 +469,28 @@ def webhook():
         elif user_message == "메인메뉴":
             quick_replies_category = None  # 메인 메뉴
         
-        # 엑셀 시트명과 정확히 일치하는 카테고리들 - 질문 버튼으로 표시
+        # 엑셀 시트명과 정확히 일치하는 카테고리들 - 질문 리스트 + 번호 버튼으로 표시
         elif user_message in ["유치원_강화", "유치원운영시간", "유치원방과후", "유치원상담문의", 
                              "강화된_QA_데이터", "원본_QA_데이터", "급식정보", "더보기", 
                              "방과후", "상담문의", "초등학교_강화", "학교시설", "등하교교통", 
                              "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"]:
             quick_replies_category = user_message
-            # 카테고리별 질문을 버튼으로 표시 (세로 배치)
-            text = f"{user_message} 관련 질문을 선택해주세요."
+            # 카테고리별 질문 리스트 생성
+            try:
+                with open('category_questions.json', 'r', encoding='utf-8') as f:
+                    category_questions = json.load(f)
+                
+                if user_message in category_questions:
+                    questions = category_questions[user_message]
+                    text = f"{user_message} 관련 질문을 선택해주세요.\n\n"
+                    
+                    # 질문들을 번호 리스트로 추가 (최대 10개)
+                    for i, question in enumerate(questions[:10], 1):
+                        text += f"{i}. {question}\n"
+                else:
+                    text = f"{user_message} 관련 질문을 선택해주세요."
+            except Exception as e:
+                text = f"{user_message} 관련 질문을 선택해주세요."
         
         # AI 로직으로 메시지 처리 (메뉴가 아닌 경우에만)
         if text is None:
