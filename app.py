@@ -415,6 +415,15 @@ def webhook():
                              "방과후", "상담문의", "초등학교_강화"]:
             quick_replies_category = user_message
         
+        # 메인 카테고리 선택 시 간단한 안내 메시지
+        elif user_message in ["유치원", "초등학교"]:
+            quick_replies_category = user_message
+            # 간단한 안내 메시지로 변경
+            if user_message == "유치원":
+                text = "유치원 관련 궁금하신 점을 선택해주세요."
+            else:
+                text = "초등학교 관련 궁금하신 점을 선택해주세요."
+        
         # 특별한 응답 메시지들 (QuickReplies 없이) - 엑셀 구조 기반
         special_responses = [
             # 급식 관련 (날짜별 메뉴 형태로 유지)
