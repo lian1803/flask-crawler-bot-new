@@ -187,7 +187,7 @@ def extract_message(request):
         exception_handler(e)
         return None
 
-def create_kakao_response(message, quick_replies=None):
+def create_kakao_response(message, quick_replies=None, is_question_list=False):
     """카카오톡 응답 형식 생성"""
     # 메시지가 None이거나 빈 문자열인 경우 기본 메시지 사용
     if not message or message.strip() == "":
@@ -210,8 +210,28 @@ def create_kakao_response(message, quick_replies=None):
         }
     }
 
-    # QuickReplies가 있으면 추가 (최대 10개)
-    if quick_replies and isinstance(quick_replies, list):
+    # 질문 목록인 경우 ButtonCard로 세로 배치
+    if is_question_list and quick_replies and isinstance(quick_replies, list):
+        # 기존 simpleText 제거하고 ButtonCard로 교체
+        response["template"]["outputs"] = [
+            {
+                "buttonCard": {
+                    "title": str(message),
+                    "buttons": []
+                }
+            }
+        ]
+        
+        # 버튼들을 세로로 배치
+        for reply in quick_replies:
+            response["template"]["outputs"][0]["buttonCard"]["buttons"].append({
+                "action": "message",
+                "label": reply["label"],
+                "messageText": reply["messageText"]
+            })
+    
+    # 일반 QuickReplies (가로 배치)
+    elif quick_replies and isinstance(quick_replies, list):
         if len(quick_replies) > 10:
             quick_replies = quick_replies[:10]
         response["template"]["quickReplies"] = quick_replies
@@ -475,7 +495,7 @@ def webhook():
                              "방과후", "상담문의", "초등학교_강화", "학교시설", "등하교교통", 
                              "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"]:
             quick_replies_category = user_message
-            # 카테고리별 질문을 버튼으로 표시
+            # 카테고리별 질문을 버튼으로 표시 (세로 배치)
             text = f"{user_message} 관련 질문을 선택해주세요."
         
         # AI 로직으로 메시지 처리 (메뉴가 아닌 경우에만)
@@ -500,8 +520,14 @@ def webhook():
             "오늘 급식 메뉴 알려줘", "내일 급식 메뉴 알려줘", "이번주 급식 메뉴 알려줘", "오늘의 급식은?"
         ]
         
+        # 질문 목록인 경우 세로 배치로 표시
+        if user_message in ["유치원_강화", "유치원운영시간", "유치원방과후", "유치원상담문의", 
+                           "강화된_QA_데이터", "원본_QA_데이터", "급식정보", "더보기", 
+                           "방과후", "상담문의", "초등학교_강화", "학교시설", "등하교교통", 
+                           "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"]:
+            kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category), is_question_list=True)
         # 특별한 응답인 경우 QuickReplies 없이
-        if any(keyword in user_message for keyword in special_responses):
+        elif any(keyword in user_message for keyword in special_responses):
             kakao_response = create_kakao_response(text)
         # 첫 인사나 일반적인 질문인 경우 메인 메뉴 제공
         elif any(keyword in user_message for keyword in ["안녕", "안녕하세요", "안녕!", "안녕~", "도움", "도움말", "무엇을", "뭐해", "뭐하고 있어"]):
