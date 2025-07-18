@@ -351,18 +351,58 @@ def create_quick_replies(category=None):
             }
         ]
     
-    # 엑셀 시트명과 정확히 일치하는 카테고리들 - 세부 메뉴 없음
+    # 엑셀 시트명과 정확히 일치하는 카테고리들 - 질문 버튼으로 표시
     elif category in ["유치원_강화", "유치원운영시간", "유치원방과후", "유치원상담문의", 
                      "강화된_QA_데이터", "원본_QA_데이터", "더보기", 
                      "방과후", "상담문의", "초등학교_강화", "학교시설", "등하교교통", 
                      "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"]:
-        return [
-            {
-                "action": "message",
-                "label": "⬅️ 뒤로가기",
-                "messageText": "초등학교" if "초등" in category or category in ["강화된_QA_데이터", "원본_QA_데이터", "더보기", "방과후", "상담문의", "학교시설", "등하교교통", "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"] else "유치원"
-            }
-        ]
+        
+        # 카테고리별 질문들을 버튼으로 생성
+        try:
+            with open('category_questions.json', 'r', encoding='utf-8') as f:
+                category_questions = json.load(f)
+            
+            if category in category_questions:
+                questions = category_questions[category]
+                quick_replies = []
+                
+                # 질문들을 버튼으로 변환 (최대 10개)
+                for i, question in enumerate(questions[:10], 1):
+                    # 질문이 너무 길면 줄이기
+                    label = question[:20] + "..." if len(question) > 20 else question
+                    quick_replies.append({
+                        "action": "message",
+                        "label": f"{i}. {label}",
+                        "messageText": question
+                    })
+                
+                # 뒤로가기 버튼 추가
+                back_category = "초등학교" if "초등" in category or category in ["강화된_QA_데이터", "원본_QA_데이터", "더보기", "방과후", "상담문의", "학교시설", "등하교교통", "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"] else "유치원"
+                quick_replies.append({
+                    "action": "message",
+                    "label": "⬅️ 뒤로가기",
+                    "messageText": back_category
+                })
+                
+                return quick_replies
+            else:
+                # 질문을 찾을 수 없는 경우
+                return [
+                    {
+                        "action": "message",
+                        "label": "⬅️ 뒤로가기",
+                        "messageText": "초등학교" if "초등" in category or category in ["강화된_QA_데이터", "원본_QA_데이터", "더보기", "방과후", "상담문의", "학교시설", "등하교교통", "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"] else "유치원"
+                    }
+                ]
+        except Exception as e:
+            # 오류 발생 시 기본 뒤로가기만
+            return [
+                {
+                    "action": "message",
+                    "label": "⬅️ 뒤로가기",
+                    "messageText": "초등학교" if "초등" in category or category in ["강화된_QA_데이터", "원본_QA_데이터", "더보기", "방과후", "상담문의", "학교시설", "등하교교통", "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"] else "유치원"
+                }
+            ]
     
     # 기본값 - 뒤로가기만
     else:
@@ -431,32 +471,14 @@ def webhook():
         elif user_message == "메인메뉴":
             quick_replies_category = None  # 메인 메뉴
         
-        # 엑셀 시트명과 정확히 일치하는 카테고리들 - 질문 목록 표시
+        # 엑셀 시트명과 정확히 일치하는 카테고리들 - 질문 버튼으로 표시
         elif user_message in ["유치원_강화", "유치원운영시간", "유치원방과후", "유치원상담문의", 
                              "강화된_QA_데이터", "원본_QA_데이터", "급식정보", "더보기", 
                              "방과후", "상담문의", "초등학교_강화", "학교시설", "등하교교통", 
                              "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"]:
             quick_replies_category = user_message
-            # 카테고리별 질문 목록 표시
-            try:
-                with open('category_questions.json', 'r', encoding='utf-8') as f:
-                    category_questions = json.load(f)
-                
-                if user_message in category_questions:
-                    questions = category_questions[user_message]
-                    if len(questions) <= 5:  # 5개 이하면 모든 질문 표시
-                        text = f"{user_message} 관련 질문들:\n\n"
-                        for i, question in enumerate(questions, 1):
-                            text += f"{i}. {question}\n"
-                    else:  # 5개 초과면 처음 5개만 표시
-                        text = f"{user_message} 관련 질문들 (처음 5개):\n\n"
-                        for i, question in enumerate(questions[:5], 1):
-                            text += f"{i}. {question}\n"
-                        text += f"\n... 외 {len(questions)-5}개 더"
-                else:
-                    text = f"{user_message} 관련 질문을 찾을 수 없습니다."
-            except Exception as e:
-                text = f"{user_message} 관련 질문 목록을 불러오는 중 오류가 발생했습니다."
+            # 카테고리별 질문을 버튼으로 표시
+            text = f"{user_message} 관련 질문을 선택해주세요."
         
         # AI 로직으로 메시지 처리 (메뉴가 아닌 경우에만)
         if text is None:
