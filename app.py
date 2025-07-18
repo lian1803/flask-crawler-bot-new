@@ -366,13 +366,11 @@ def create_quick_replies(category=None):
                 questions = category_questions[category]
                 quick_replies = []
                 
-                # 질문들을 버튼으로 변환 (최대 10개)
-                for i, question in enumerate(questions[:10], 1):
-                    # 질문이 너무 길면 줄이기
-                    label = question[:20] + "..." if len(question) > 20 else question
+                # 질문들을 버튼으로 변환 (세로 배치)
+                for question in questions:
                     quick_replies.append({
                         "action": "message",
-                        "label": f"{i}. {label}",
+                        "label": question,
                         "messageText": question
                     })
                 
