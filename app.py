@@ -187,7 +187,7 @@ def extract_message(request):
         exception_handler(e)
         return None
 
-def create_kakao_response(message, quick_replies=None, is_question_list=False):
+def create_kakao_response(message, quick_replies=None):
     """카카오톡 응답 형식 생성"""
     # 메시지가 None이거나 빈 문자열인 경우 기본 메시지 사용
     if not message or message.strip() == "":
@@ -210,28 +210,8 @@ def create_kakao_response(message, quick_replies=None, is_question_list=False):
         }
     }
 
-    # 질문 목록인 경우 ButtonCard로 세로 배치
-    if is_question_list and quick_replies and isinstance(quick_replies, list):
-        # 기존 simpleText 제거하고 ButtonCard로 교체
-        response["template"]["outputs"] = [
-            {
-                "buttonCard": {
-                    "title": str(message),
-                    "buttons": []
-                }
-            }
-        ]
-        
-        # 버튼들을 세로로 배치
-        for reply in quick_replies:
-            response["template"]["outputs"][0]["buttonCard"]["buttons"].append({
-                "action": "message",
-                "label": reply["label"],
-                "messageText": reply["messageText"]
-            })
-    
-    # 일반 QuickReplies (가로 배치)
-    elif quick_replies and isinstance(quick_replies, list):
+    # QuickReplies 추가 (카카오톡에서 자동으로 세로 배치)
+    if quick_replies and isinstance(quick_replies, list):
         if len(quick_replies) > 10:
             quick_replies = quick_replies[:10]
         response["template"]["quickReplies"] = quick_replies
@@ -386,11 +366,13 @@ def create_quick_replies(category=None):
                 questions = category_questions[category]
                 quick_replies = []
                 
-                # 질문들을 버튼으로 변환 (세로 배치)
+                # 질문들을 버튼으로 변환 (세로 배치를 위해 긴 텍스트로)
                 for question in questions:
+                    # 세로 배치를 위해 질문 앞에 공백 추가
+                    label = f"  {question}"
                     quick_replies.append({
                         "action": "message",
-                        "label": question,
+                        "label": label,
                         "messageText": question
                     })
                 
@@ -520,12 +502,12 @@ def webhook():
             "오늘 급식 메뉴 알려줘", "내일 급식 메뉴 알려줘", "이번주 급식 메뉴 알려줘", "오늘의 급식은?"
         ]
         
-        # 질문 목록인 경우 세로 배치로 표시
+        # 질문 목록인 경우 표시
         if user_message in ["유치원_강화", "유치원운영시간", "유치원방과후", "유치원상담문의", 
                            "강화된_QA_데이터", "원본_QA_데이터", "급식정보", "더보기", 
                            "방과후", "상담문의", "초등학교_강화", "학교시설", "등하교교통", 
                            "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"]:
-            kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category), is_question_list=True)
+            kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category))
         # 특별한 응답인 경우 QuickReplies 없이
         elif any(keyword in user_message for keyword in special_responses):
             kakao_response = create_kakao_response(text)
