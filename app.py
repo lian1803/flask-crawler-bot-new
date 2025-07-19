@@ -32,14 +32,14 @@ def get_ai_logic():
     """AI 로직 인스턴스 가져오기 (지연 초기화)"""
     global ai_logic
     if ai_logic is None:
-ai_logic = AILogic()
+        ai_logic = AILogic()
     return ai_logic
 
 def get_db():
     """DB 인스턴스 가져오기 (지연 초기화)"""
     global db
     if db is None:
-db = DatabaseManager()
+        db = DatabaseManager()
     return db
 
 def run_crawler():
@@ -285,9 +285,9 @@ def create_quick_replies(category=None):
     
     # 초등학교 메뉴 - 엑셀 구조 기반
     elif category == "초등학교":
-    return [
-        {
-            "action": "message",
+        return [
+            {
+                "action": "message",
                 "label": "🍽️ 급식",
                 "messageText": "급식정보"
             },
@@ -512,20 +512,20 @@ def webhook():
         # AI 로직으로 메시지 처리 (메뉴가 아닌 경우에만)
         link = None  # 링크 초기화
         if text is None:
-        try:
-            ai_logic = get_ai_logic()
-        success, response = ai_logic.process_message(user_message, user_id)
-        
-            # 텍스트 응답으로 통일
-            if isinstance(response, dict):
-                text = response.get("text", str(response))
-                    link = response.get("link")  # 링크 추출
-            else:
-                text = str(response)
+            try:
+                ai_logic = get_ai_logic()
+                success, response = ai_logic.process_message(user_message, user_id)
                 
-        except Exception as ai_error:
-            print(f"AI 로직 오류: {ai_error}")
-            text = "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?"
+                # 텍스트 응답으로 통일
+                if isinstance(response, dict):
+                    text = response.get("text", str(response))
+                    link = response.get("link")  # 링크 추출
+                else:
+                    text = str(response)
+                
+            except Exception as ai_error:
+                print(f"AI 로직 오류: {ai_error}")
+                text = "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?"
         
         # 특별한 응답 메시지들 (QuickReplies 없이) - 엑셀 구조 기반
         special_responses = [
