@@ -605,7 +605,65 @@ class AILogic:
             # self.db.save_conversation(user_id, user_message, response)
             return True, {"type": "text", "text": response}
         
-        # 3. 유치원 관련 질문 특별 처리 (새로 추가)
+        # 3. 방과후 관련 질문 특별 처리 (새로 추가 - 타임아웃 방지)
+        if any(keyword in user_message for keyword in ["방과후", "늘봄", "돌봄"]):
+            user_message_lower = user_message.lower()
+            
+            # 방과후 장소 관련
+            if any(keyword in user_message_lower for keyword in ["어디서", "어디", "장소", "위치"]):
+                response = "방과후 프로그램은 학교 내에서 진행됩니다. 구체적인 장소는 프로그램별로 다르며, 자세한 정보는 늘봄전담실로 문의해주세요."
+                # self.db.save_conversation(user_id, user_message, response)
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
+            
+            # 방과후 시간 관련
+            elif any(keyword in user_message_lower for keyword in ["언제", "몇시", "시간", "끝나", "종료"]):
+                response = "방과후 프로그램은 보통 오후 3시부터 시작하여 5-6시경에 종료됩니다. 정확한 시간은 프로그램별로 다르므로 늘봄전담실로 문의해주세요."
+                # self.db.save_conversation(user_id, user_message, response)
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
+            
+            # 방과후 신청 관련
+            elif any(keyword in user_message_lower for keyword in ["신청", "등록", "가입", "참여"]):
+                response = "방과후 프로그램 신청은 늘봄전담실에서 받고 있습니다. 빈 자리가 있는 경우 신청이 가능하며, 자세한 사항은 늘봄전담실로 문의해주세요."
+                # self.db.save_conversation(user_id, user_message, response)
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
+            
+            # 방과후 대기 관련
+            elif any(keyword in user_message_lower for keyword in ["대기", "기다리", "픽업"]):
+                response = "방과후 대기 장소는 쉼터와 도서실에서 이용하실 수 있습니다. 학생들의 안전을 위해 지정된 장소에서 대기해주세요."
+                # self.db.save_conversation(user_id, user_message, response)
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
+            
+            # 방과후 하원 관련
+            elif any(keyword in user_message_lower for keyword in ["하원", "퇴실", "집에", "돌아가"]):
+                response = "방과후 과정의 경우 오후 3시부터 하원이 가능합니다. 정확한 하원 시간은 방과후 담당 선생님께 문의해주세요."
+                # self.db.save_conversation(user_id, user_message, response)
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
+            
+            # 일반적인 방과후 정보
+            else:
+                response = "방과후 프로그램 정보는 늘봄전담실에서 안내받으실 수 있습니다. 프로그램 종류, 시간, 신청 방법 등에 대해 문의해주세요."
+                # self.db.save_conversation(user_id, user_message, response)
+                text, url = extract_link_from_text(response)
+                resp = {"type": "text", "text": text}
+                if url: resp["link"] = url
+                return True, resp
+        
+        # 4. 유치원 관련 질문 특별 처리 (새로 추가)
         if "유치원" in user_message:
             user_message_lower = user_message.lower()
             
