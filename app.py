@@ -187,7 +187,7 @@ def extract_message(request):
         exception_handler(e)
         return None
 
-def create_kakao_response(message, quick_replies=None):
+def create_kakao_response(message, quick_replies=None, link=None):
     """카카오톡 응답 형식 생성"""
     # 메시지가 None이거나 빈 문자열인 경우 기본 메시지 사용
     if not message or message.strip() == "":
@@ -210,6 +210,23 @@ def create_kakao_response(message, quick_replies=None):
         }
     }
 
+    # 링크가 있는 경우 ButtonCard로 변경
+    if link:
+        response["template"]["outputs"] = [
+            {
+                "buttonCard": {
+                    "title": str(message),
+                    "buttons": [
+                        {
+                            "action": "webLink",
+                            "label": "🔗 링크 보기",
+                            "webLinkUrl": link
+                        }
+                    ]
+                }
+            }
+        ]
+    
     # QuickReplies 추가 (카카오톡에서 자동으로 세로 배치)
     if quick_replies and isinstance(quick_replies, list):
         if len(quick_replies) > 10:
@@ -493,6 +510,7 @@ def webhook():
                 text = f"{user_message} 관련 질문을 선택해주세요."
         
         # AI 로직으로 메시지 처리 (메뉴가 아닌 경우에만)
+        link = None  # 링크 초기화
         if text is None:
             try:
                 ai_logic = get_ai_logic()
@@ -501,6 +519,7 @@ def webhook():
                 # 텍스트 응답으로 통일
                 if isinstance(response, dict):
                     text = response.get("text", str(response))
+                    link = response.get("link")  # 링크 추출
                 else:
                     text = str(response)
                     
@@ -519,15 +538,15 @@ def webhook():
                            "강화된_QA_데이터", "원본_QA_데이터", "급식정보", "더보기", 
                            "방과후", "상담문의", "초등학교_강화", "학교시설", "등하교교통", 
                            "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"]:
-            kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category))
+            kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category), link)
         # 특별한 응답인 경우 QuickReplies 없이
         elif any(keyword in user_message for keyword in special_responses):
-            kakao_response = create_kakao_response(text)
+            kakao_response = create_kakao_response(text, link=link)
         # 첫 인사나 일반적인 질문인 경우 메인 메뉴 제공
         elif any(keyword in user_message for keyword in ["안녕", "안녕하세요", "안녕!", "안녕~", "도움", "도움말", "무엇을", "뭐해", "뭐하고 있어"]):
-            kakao_response = create_kakao_response(text, create_quick_replies(None))  # 메인 메뉴
+            kakao_response = create_kakao_response(text, create_quick_replies(None), link)  # 메인 메뉴
         else:
-            kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category))
+            kakao_response = create_kakao_response(text, create_quick_replies(quick_replies_category), link)
         
         # 응답 로깅
         print(f"응답 데이터: {kakao_response}")
