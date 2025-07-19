@@ -32,14 +32,14 @@ def get_ai_logic():
     """AI 로직 인스턴스 가져오기 (지연 초기화)"""
     global ai_logic
     if ai_logic is None:
-        ai_logic = AILogic()
+ai_logic = AILogic()
     return ai_logic
 
 def get_db():
     """DB 인스턴스 가져오기 (지연 초기화)"""
     global db
     if db is None:
-        db = DatabaseManager()
+db = DatabaseManager()
     return db
 
 def run_crawler():
@@ -285,9 +285,9 @@ def create_quick_replies(category=None):
     
     # 초등학교 메뉴 - 엑셀 구조 기반
     elif category == "초등학교":
-        return [
-            {
-                "action": "message",
+    return [
+        {
+            "action": "message",
                 "label": "🍽️ 급식",
                 "messageText": "급식정보"
             },
@@ -403,8 +403,8 @@ def create_quick_replies(category=None):
             else:
                 # 질문을 찾을 수 없는 경우
                 return [
-                    {
-                        "action": "message",
+        {
+            "action": "message",
                         "label": "⬅️ 뒤로가기",
                         "messageText": "초등학교" if "초등" in category or category in ["강화된_QA_데이터", "원본_QA_데이터", "더보기", "방과후", "상담문의", "학교시설", "등하교교통", "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"] else "유치원"
                     }
@@ -412,12 +412,12 @@ def create_quick_replies(category=None):
         except Exception as e:
             # 오류 발생 시 기본 뒤로가기만
             return [
-                {
+            {
                     "action": "message",
                     "label": "⬅️ 뒤로가기",
                     "messageText": "초등학교" if "초등" in category or category in ["강화된_QA_데이터", "원본_QA_데이터", "더보기", "방과후", "상담문의", "학교시설", "등하교교통", "서류증명서", "교과서정보", "시간일정", "보건건강", "체험학습", "방학휴가"] else "유치원"
-                }
-            ]
+            }
+        ]
     
     # 기본값 - 뒤로가기만
     else:
@@ -426,8 +426,8 @@ def create_quick_replies(category=None):
                 "action": "message",
                 "label": "⬅️ 뒤로가기",
                 "messageText": "메인메뉴"
-            }
-        ]
+        }
+    ]
 
 @app.route('/', methods=['GET'])
 def root():
@@ -512,20 +512,20 @@ def webhook():
         # AI 로직으로 메시지 처리 (메뉴가 아닌 경우에만)
         link = None  # 링크 초기화
         if text is None:
-            try:
-                ai_logic = get_ai_logic()
-                success, response = ai_logic.process_message(user_message, user_id)
-                
-                # 텍스트 응답으로 통일
-                if isinstance(response, dict):
-                    text = response.get("text", str(response))
+        try:
+            ai_logic = get_ai_logic()
+        success, response = ai_logic.process_message(user_message, user_id)
+        
+            # 텍스트 응답으로 통일
+            if isinstance(response, dict):
+                text = response.get("text", str(response))
                     link = response.get("link")  # 링크 추출
-                else:
-                    text = str(response)
-                    
-            except Exception as ai_error:
-                print(f"AI 로직 오류: {ai_error}")
-                text = "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?"
+            else:
+                text = str(response)
+                
+        except Exception as ai_error:
+            print(f"AI 로직 오류: {ai_error}")
+            text = "안녕하세요! 와석초등학교 챗봇입니다. 무엇을 도와드릴까요?"
         
         # 특별한 응답 메시지들 (QuickReplies 없이) - 엑셀 구조 기반
         special_responses = [

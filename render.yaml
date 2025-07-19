@@ -23,6 +23,6 @@ services:
       - key: PORT
         value: 10000
       - key: GUNICORN_TIMEOUT
-        value: 120
+        value: 120 
       - key: DISPLAY
         value: ":99" 

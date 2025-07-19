@@ -85,7 +85,7 @@ def setup_driver():
     if os.path.exists('/usr/local/bin/chromedriver'):
         service = Service('/usr/local/bin/chromedriver')
     else:
-        service = Service()
+    service = Service()
     
     driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.implicitly_wait(3)

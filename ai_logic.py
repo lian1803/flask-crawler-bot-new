@@ -246,9 +246,9 @@ class AILogic:
                         for keyword in kindergarten_keywords:
                             if keyword in user_message_lower and keyword in question_lower:
                                 score = 0.8  # 높은 점수 부여
-                                if score > best_score:
-                                    best_score = score
-                                    best_match = qa
+                    if score > best_score:
+                        best_score = score
+                        best_match = qa
                                 break
                 
                 # 3. 초등학교 관련 질문 특별 처리
@@ -263,12 +263,12 @@ class AILogic:
                         ]
                         
                         for keyword in elementary_keywords:
-                            if keyword in user_message_lower and keyword in question_lower:
+                    if keyword in user_message_lower and keyword in question_lower:
                                 score = 0.8  # 높은 점수 부여
                                 if score > best_score:
                                     best_score = score
                                     best_match = qa
-                                break
+                        break
                 
                 # 4. 일반적인 키워드 매칭
                 else:
@@ -292,9 +292,9 @@ class AILogic:
                 if not best_match:
                     if user_message_lower in question_lower or question_lower in user_message_lower:
                         score = 0.3
-                        if score > best_score:
-                            best_score = score
-                            best_match = qa
+                if score > best_score:
+                    best_score = score
+                    best_match = qa
             
             # 6. 특별한 케이스 처리
             if not best_match:
@@ -368,7 +368,7 @@ class AILogic:
             
         except Exception as e:
             print(f"QA 매칭 중 오류: {e}")
-            return None
+        return None
     
     def calculate_context_score(self, user_message: str, question: str) -> float:
         """맥락적 매칭 점수 계산"""
@@ -767,7 +767,7 @@ class AILogic:
                 response = {"type": "text", "text": text}
                 if url:
                     response["link"] = url
-                if qa_match.get('additional_answer'):
+            if qa_match.get('additional_answer'):
                     response["text"] += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
             
             self.db.save_conversation(user_id, user_message, response)
