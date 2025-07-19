@@ -246,9 +246,9 @@ class AILogic:
                         for keyword in kindergarten_keywords:
                             if keyword in user_message_lower and keyword in question_lower:
                                 score = 0.8  # 높은 점수 부여
-                    if score > best_score:
-                        best_score = score
-                        best_match = qa
+                                if score > best_score:
+                                    best_score = score
+                                    best_match = qa
                                 break
                 
                 # 3. 초등학교 관련 질문 특별 처리
@@ -263,12 +263,12 @@ class AILogic:
                         ]
                         
                         for keyword in elementary_keywords:
-                    if keyword in user_message_lower and keyword in question_lower:
+                            if keyword in user_message_lower and keyword in question_lower:
                                 score = 0.8  # 높은 점수 부여
                                 if score > best_score:
                                     best_score = score
                                     best_match = qa
-                        break
+                                break
                 
                 # 4. 일반적인 키워드 매칭
                 else:
