@@ -578,14 +578,16 @@ class AILogic:
             # 날짜가 명시된 경우 (오늘, 내일, 어제, 모레, 구체적 날짜)
             if date:
                 response = self.get_meal_info(date)
-                self.db.save_conversation(user_id, user_message, response)
+                # 급식 응답은 저장 생략 (타임아웃 방지)
+                # self.db.save_conversation(user_id, user_message, response)
                 return True, {"type": "text", "text": response}  # 급식은 링크 없음
             
             # 날짜가 명시되지 않은 급식 관련 질문은 "오늘"로 간주하여 실시간 조회
             if any(keyword in user_message for keyword in ["오늘", "지금", "현재", "이번", "이번주"]):
                 today = get_kst_now().strftime("%Y-%m-%d")
                 response = self.get_meal_info(today)
-                self.db.save_conversation(user_id, user_message, response)
+                # 급식 응답은 저장 생략 (타임아웃 방지)
+                # self.db.save_conversation(user_id, user_message, response)
                 return True, {"type": "text", "text": response}  # 급식은 링크 없음
             
             # 그 외 급식 관련 질문은 QA 데이터베이스에서 답변
@@ -593,13 +595,14 @@ class AILogic:
             if qa_match:
                 answer = qa_match['answer']
                 # 급식은 링크 없음
-                self.db.save_conversation(user_id, user_message, answer)
+                # self.db.save_conversation(user_id, user_message, answer)
                 return True, {"type": "text", "text": answer}
         
         # 2. 공지사항 관련 질문 확인
         if any(keyword in user_message for keyword in ["공지", "알림", "소식", "뉴스"]):
             response = self.get_notices_info()
-            self.db.save_conversation(user_id, user_message, response)
+            # 공지사항 응답은 저장 생략 (타임아웃 방지)
+            # self.db.save_conversation(user_id, user_message, response)
             return True, {"type": "text", "text": response}
         
         # 3. 유치원 관련 질문 특별 처리 (새로 추가)
@@ -609,7 +612,7 @@ class AILogic:
             # 유치원 운영시간 관련
             if any(keyword in user_message_lower for keyword in ["운영시간", "운영 시간", "시간", "몇시"]):
                 response = "교육과정 시간은 오전 9시~13시 30분까지\n방과후과정은 오전 8시~19시까지"
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -618,7 +621,7 @@ class AILogic:
             # 유치원 교육비 관련
             elif any(keyword in user_message_lower for keyword in ["교육비", "비용", "얼마", "돈"]):
                 response = "병설유치원은 입학비, 방과후과정비, 교육비, 현장학습비, 방과후특성화비 모두 무상으로 지원됩니다."
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -627,7 +630,7 @@ class AILogic:
             # 유치원 담임 선생님 연락처
             elif any(keyword in user_message_lower for keyword in ["담임", "연락처", "전화번호", "연락"]):
                 response = "바른반: 070-7525-7763\n슬기반 070-7525-7755\n꿈반 070-7525-7849\n자람반 070-7525-7560\n원무실 031-957-8715"
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -636,7 +639,7 @@ class AILogic:
             # 유치원 개학일
             elif "개학일" in user_message_lower:
                 response = "유치원 개학일은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 3월 초에 1학기 개학이, 8월 말~9월 초에 2학기 개학이 진행됩니다. 정확한 개학일은 원무실(031-957-8715)로 문의해주세요."
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -645,7 +648,7 @@ class AILogic:
             # 유치원 방학일
             elif "방학일" in user_message_lower or "방학" in user_message_lower:
                 response = "유치원 방학은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 7월 말~8월 초에 여름방학이, 12월 말~2월 말에 겨울방학이 진행됩니다. 정확한 방학일은 원무실(031-957-8715)로 문의해주세요."
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -654,7 +657,7 @@ class AILogic:
             # 유치원 졸업식
             elif "졸업식" in user_message_lower:
                 response = "유치원 졸업식은 보통 2월 말에 진행됩니다. 정확한 일정은 학사일정을 참고해주시거나 원무실(031-957-8715)로 문의해주세요."
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -663,7 +666,7 @@ class AILogic:
             # 유치원 행사일
             elif "행사일" in user_message_lower or "행사" in user_message_lower:
                 response = "유치원에서는 다양한 행사가 진행됩니다. 입학식, 졸업식, 현장학습, 학부모 참여수업 등이 있으며, 정확한 일정은 학사일정을 참고해주시거나 원무실(031-957-8715)로 문의해주세요."
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -676,7 +679,7 @@ class AILogic:
             # 초등학교 개학일
             if "개학일" in user_message_lower:
                 response = "개학일은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 3월 초에 1학기 개학이, 8월 말~9월 초에 2학기 개학이 진행됩니다. 정확한 개학일은 교무실(031-957-8715)로 문의해주세요. 개학일에는 학생들의 건강상태를 확인하고 안전한 학교생활을 위한 안내가 이루어집니다. 더 궁금하신 점이 있으시면 언제든 말씀해주세요!"
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -685,7 +688,7 @@ class AILogic:
             # 초등학교 방학일
             elif "방학일" in user_message_lower or "방학" in user_message_lower:
                 response = "방학은 학사일정에 따라 매년 조금씩 다를 수 있습니다. 보통 7월 말~8월 초에 여름방학이, 12월 말~2월 말에 겨울방학이 진행됩니다. 정확한 방학일은 교무실(031-957-8715)로 문의해주세요."
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -694,7 +697,7 @@ class AILogic:
             # 초등학교 시험일
             elif "시험일" in user_message_lower or "시험" in user_message_lower:
                 response = "시험일은 학년별로 다르며, 보통 1학기 중간고사(5월), 1학기 기말고사(7월), 2학기 중간고사(10월), 2학기 기말고사(12월)에 진행됩니다. 정확한 시험일은 담임선생님께 문의해주세요."
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -703,7 +706,7 @@ class AILogic:
             # 초등학교 행사일
             elif "행사일" in user_message_lower or "행사" in user_message_lower:
                 response = "초등학교에서는 다양한 행사가 진행됩니다. 입학식, 졸업식, 체육대회, 학예회, 현장학습 등이 있으며, 정확한 일정은 학사일정을 참고해주시거나 교무실(031-957-8715)로 문의해주세요."
-                self.db.save_conversation(user_id, user_message, response)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -746,7 +749,8 @@ class AILogic:
         # 부분 매칭으로 간단한 응답 찾기 (우선순위 높게 처리)
         for keyword, response in simple_responses.items():
             if keyword in user_message:
-                self.db.save_conversation(user_id, user_message, response)
+                # 간단한 응답은 저장 생략 (타임아웃 방지)
+                # self.db.save_conversation(user_id, user_message, response)
                 text, url = extract_link_from_text(response)
                 resp = {"type": "text", "text": text}
                 if url: resp["link"] = url
@@ -770,40 +774,46 @@ class AILogic:
             if qa_match.get('additional_answer'):
                     response["text"] += f"\n\n추가 정보:\n{qa_match['additional_answer']}"
             
-            self.db.save_conversation(user_id, user_message, response)
+            # 중요한 QA 응답만 저장 (타임아웃 방지)
+            try:
+                self.db.save_conversation(user_id, user_message, response)
+            except:
+                pass  # 저장 실패해도 응답은 계속
             return True, response
         
         # 7. OpenAI를 통한 응답 (마지막 수단, 타임아웃 방지를 위해 간단하게)
         return self.call_openai_api(user_message, user_id)
     
     def call_openai_api(self, user_message: str, user_id: str) -> Tuple[bool, str]:
-        """OpenAI API 호출 (최적화된 버전)"""
+        """OpenAI API 호출 (타임아웃 방지 최적화)"""
         try:
-            # 간단한 프롬프트만 사용
-            simple_prompt = f"와석초등학교 챗봇입니다. 다음 질문에 대해 간단하고 친근하게 답변해주세요: {user_message}"
+            # 매우 간단한 프롬프트 사용
+            simple_prompt = f"와석초등학교 관련 질문: {user_message[:50]}"
             
             response = openai.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[{"role": "user", "content": simple_prompt}],
-                temperature=0.7,
-                max_tokens=100,  # 토큰 수 줄임
-                top_p=1.0
+                temperature=0.5,
+                max_tokens=50,  # 토큰 수 더 줄임
+                top_p=1.0,
+                timeout=5  # 5초 타임아웃 설정
             )
             
             ai_response = response.choices[0].message.content.strip()
             
             # 응답이 너무 길면 자르기
-            if len(ai_response) > 150:
-                ai_response = ai_response[:150] + "..."
+            if len(ai_response) > 100:
+                ai_response = ai_response[:100] + "..."
             
-            self.db.save_conversation(user_id, user_message, ai_response)
+            # 데이터베이스 저장은 비동기로 처리하거나 생략
+            # self.db.save_conversation(user_id, user_message, ai_response)
             return True, ai_response
             
         except Exception as e:
             print(f"OpenAI 처리 중 오류: {e}")
+            # 타임아웃이나 오류 시 즉시 기본 응답 반환
             fallback_response = "죄송합니다. 해당 질문에 대한 답변을 찾을 수 없습니다. 다른 질문을 해주세요."
-            self.db.save_conversation(user_id, user_message, fallback_response)
-            return False, fallback_response 
+            return False, fallback_response
     
     def add_image_to_response(self, response: str, qa_match: Dict) -> dict:
         """이미지 첨부 응답에 실제 이미지 URL 추가 (카카오톡 챗봇용)"""
