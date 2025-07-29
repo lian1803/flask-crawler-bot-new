@@ -529,12 +529,22 @@ def webhook():
                     pass
                 
                 if is_menu_selection:
-                    # 메뉴 선택인 경우 AI 없이 엑셀 답변 그대로 사용
-                    response = ai_logic.get_menu_answer(user_message)
-                    if response:
-                        text = response.get("text", str(response))
+                    # 급식 관련 메뉴는 실시간 데이터 사용 (이번주급식 제외)
+                    if user_message in ["오늘급식", "내일급식"]:
+                        # 실시간 급식 데이터 사용
+                        success, response = ai_logic.process_message(user_message, user_id)
+                        if isinstance(response, dict):
+                            text = response.get("text", str(response))
+                            link = response.get("link")
+                        else:
+                            text = str(response)
                     else:
-                        text = "죄송합니다. 해당 질문에 대한 답변을 찾을 수 없습니다."
+                        # 다른 메뉴 선택인 경우 AI 없이 엑셀 답변 그대로 사용
+                        response = ai_logic.get_menu_answer(user_message)
+                        if response:
+                            text = response.get("text", str(response))
+                        else:
+                            text = "죄송합니다. 해당 질문에 대한 답변을 찾을 수 없습니다."
                 else:
                     # 자유 질문인 경우 AI 사용 (급식은 실시간 크롤링 유지)
                     success, response = ai_logic.process_message(user_message, user_id)
