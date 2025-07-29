@@ -514,14 +514,37 @@ def webhook():
         if text is None:
             try:
                 ai_logic = get_ai_logic()
-                success, response = ai_logic.process_message(user_message, user_id)
                 
-                # 텍스트 응답으로 통일
-                if isinstance(response, dict):
-                    text = response.get("text", str(response))
-                    link = response.get("link")  # 링크 추출
+                # 메뉴 선택(1번, 2번 등)인지 확인 - category_questions.json의 질문들과 매칭
+                is_menu_selection = False
+                try:
+                    with open('category_questions.json', 'r', encoding='utf-8') as f:
+                        category_questions = json.load(f)
+                    
+                    for category, questions in category_questions.items():
+                        if user_message in questions:
+                            is_menu_selection = True
+                            break
+                except:
+                    pass
+                
+                if is_menu_selection:
+                    # 메뉴 선택인 경우 AI 없이 엑셀 답변 그대로 사용
+                    response = ai_logic.get_menu_answer(user_message)
+                    if response:
+                        text = response.get("text", str(response))
+                    else:
+                        text = "죄송합니다. 해당 질문에 대한 답변을 찾을 수 없습니다."
                 else:
-                    text = str(response)
+                    # 자유 질문인 경우 AI 사용 (급식은 실시간 크롤링 유지)
+                    success, response = ai_logic.process_message(user_message, user_id)
+                    
+                    # 텍스트 응답으로 통일
+                    if isinstance(response, dict):
+                        text = response.get("text", str(response))
+                        link = response.get("link")  # 링크 추출
+                    else:
+                        text = str(response)
                 
             except Exception as ai_error:
                 print(f"AI 로직 오류: {ai_error}")

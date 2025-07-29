@@ -558,6 +558,22 @@ class AILogic:
         
         return None
     
+    def get_menu_answer(self, question: str) -> Optional[Dict]:
+        """메뉴 선택(1번, 2번 등)에 대한 답변을 AI 없이 엑셀에서 직접 가져오기"""
+        self._ensure_initialized()
+        
+        if not self.qa_data:
+            return None
+        
+        # 정확한 질문 매칭
+        for qa_item in self.qa_data:
+            if qa_item['question'] == question:
+                answer = qa_item['answer']
+                # 일체형 답변 그대로 반환 (링크 분리하지 않음)
+                return {"type": "text", "text": answer}
+        
+        return None
+
     def process_message(self, user_message: str, user_id: str) -> Tuple[bool, dict]:
         """메인 메시지 처리 로직 (최적화된 버전)"""
         print(f"사용자 메시지: {user_message}")
