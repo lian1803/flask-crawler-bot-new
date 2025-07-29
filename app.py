@@ -349,17 +349,17 @@ def create_quick_replies(category=None):
             {
                 "action": "message",
                 "label": "🍽️ 오늘급식",
-                "messageText": "오늘 급식 메뉴 알려줘"
+                "messageText": "오늘급식"
             },
             {
                 "action": "message",
                 "label": "🍽️ 내일급식",
-                "messageText": "내일 급식 메뉴 알려줘"
+                "messageText": "내일급식"
             },
             {
                 "action": "message",
                 "label": "🍽️ 이번주급식",
-                "messageText": "이번주 급식 메뉴 알려줘"
+                "messageText": "이번주급식"
             },
             {
                 "action": "message",
